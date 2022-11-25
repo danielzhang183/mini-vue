@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, it } from 'vitest'
 import { effect } from '../src/effect'
 import { flushJob, queue } from '../src/flush'
 import { p } from './fixtures'

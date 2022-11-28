@@ -35,8 +35,26 @@ export function cleanupEffect(effect: Effect) {
   }
 }
 
+export let shouldTrack = true
+const trackStack: boolean[] = []
+
+export function pauseTracking() {
+  trackStack.push(shouldTrack)
+  shouldTrack = false
+}
+
+export function enableTracking() {
+  trackStack.push(shouldTrack)
+  shouldTrack = true
+}
+
+export function resetTracking() {
+  const last = trackStack.pop()
+  shouldTrack = last === undefined ? true : last
+}
+
 export function track(target: any, key: DepKey) {
-  if (!activeEffect)
+  if (!activeEffect || !shouldTrack)
     return
 
   let depsMap = targetMap.get(target)

@@ -1,9 +1,35 @@
+import { arrayInstrumentations } from './baseHandlers'
 import { ITERATE_KEY, track, trigger } from './effect'
 import { TriggerOpTypes } from './operations'
 import { hasChanged, hasOwnProperty, isArray, isObject, isSymbol } from './utils'
 
+export const enum ReactiveFlags {
+  SKIP = '__v_skip',
+  IS_REACTIVE = '__v_isReactive',
+  IS_READONLY = '__v_isReadonly',
+  IS_SHALLOW = '__v_isShallow',
+  RAW = '__v_raw',
+}
+
+export interface Target {
+  [ReactiveFlags.SKIP]?: boolean
+  [ReactiveFlags.IS_REACTIVE]?: boolean
+  [ReactiveFlags.IS_READONLY]?: boolean
+  [ReactiveFlags.IS_SHALLOW]?: boolean
+  [ReactiveFlags.RAW]?: any
+}
+
+const reactiveMap = new Map()
+
 export function reactive(obj: object) {
-  return createReactive(obj)
+  const existedProxy = reactiveMap.get(obj)
+  if (existedProxy)
+    return existedProxy
+
+  const proxy = createReactive(obj)
+  reactiveMap.set(obj, proxy)
+
+  return proxy
 }
 
 export function shallowReactive(obj: object) {
@@ -18,16 +44,21 @@ export function shallowReadonly(obj: object) {
   return createReactive(obj, true, true)
 }
 
+let shouldTrack = true
+
 export function createReactive(obj: object, isShallow = false, isReadonly = false): any {
   return new Proxy(obj, {
     get(target: any, key, receiver) {
-      if (key === 'raw')
+      if (key === ReactiveFlags.RAW)
         return target
 
-      const res = Reflect.get(target, key, receiver)
+      if (isArray(target) && hasOwnProperty(arrayInstrumentations, key))
+        return Reflect.get(arrayInstrumentations, key, receiver)
 
       if (!isReadonly && !isSymbol(key))
         track(target, key)
+
+      const res = Reflect.get(target, key, receiver)
 
       if (isShallow)
         return res

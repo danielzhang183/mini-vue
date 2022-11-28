@@ -65,7 +65,7 @@ describe('Array', () => {
     arr2.length = 0
   })
 
-  it('for...of', () => {
+  it.skip('for...of', () => {
     const arr3 = reactive(['foo'])
 
     effect(() => {
@@ -75,5 +75,24 @@ describe('Array', () => {
 
     arr3[1] = 'bar'
     arr3.length = 0
+  })
+
+  it('includes', () => {
+    // const arr4 = reactive([1, 2])
+    // effect(() => console.log(arr4.includes(1)))
+
+    // arr4[0] = 3
+
+    const obj = {}
+    const arr5 = reactive([obj])
+    expect(arr5.includes(arr5[0])).toBe(true)
+    expect(arr5.includes(obj)).toBe(true)
+  })
+
+  it('push', () => {
+    const arr = reactive([])
+    effect(() => arr.push(1))
+    effect(() => arr.push(2))
+    expect(arr).toStrictEqual([1, 2])
   })
 })

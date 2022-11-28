@@ -4,7 +4,7 @@ const targetMap: WeakMap<Object, DepsMap> = new WeakMap()
 let activeEffect: Effect | undefined
 const effectStack: Effect[] = []
 
-export function effect(fn: Function, options?: EffectOptions) {
+export function effect(fn: Function, options?: EffectOptions): Effect {
   const effectFn: Effect = () => {
     cleanupEffect(effectFn)
     activeEffect = effectFn

@@ -1,1 +1,6 @@
 export * from './effect'
+export * from './flush'
+export * from './operations'
+export * from './reactive'
+export * from './types'
+export * from './watch'

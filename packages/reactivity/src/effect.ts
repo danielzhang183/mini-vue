@@ -1,8 +1,10 @@
+import { TriggerOpTypes } from './operations'
 import type { DepKey, DepsMap, Effect, EffectOptions } from './types'
 
 const targetMap: WeakMap<Object, DepsMap> = new WeakMap()
 let activeEffect: Effect | undefined
 const effectStack: Effect[] = []
+export const ITERATE_KEY = Symbol('iterate')
 
 export function effect(fn: Function, options?: EffectOptions): Effect {
   const effectFn: Effect = () => {
@@ -47,7 +49,7 @@ export function track(target: any, key: DepKey) {
   activeEffect.deps.push(deps)
 }
 
-export function trigger(target: any, key: DepKey) {
+export function trigger(target: any, key: DepKey, type: TriggerOpTypes) {
   const depsMap = targetMap.get(target)
   if (!depsMap)
     return
@@ -61,6 +63,15 @@ export function trigger(target: any, key: DepKey) {
     if (effect !== activeEffect)
       effectsToRun.add(effect)
   })
+
+  if ([TriggerOpTypes.ADD, TriggerOpTypes.DELETE].includes(type)) {
+    const iterateEffects = depsMap.get(ITERATE_KEY)
+    iterateEffects?.forEach((effect) => {
+      if (effect !== activeEffect)
+        effectsToRun.add(effect)
+    })
+  }
+
   effectsToRun.forEach((effect) => {
     if (effect.options.scheduler)
       effect.options.scheduler(effect)

@@ -63,4 +63,15 @@ describe('effect', () => {
     p.foo++
     p.foo++
   })
+
+  it('iterate key of object', () => {
+    effect(() => {
+      for (const key in p)
+        console.log(key)
+    })
+    p.new = 2
+    console.log('=========')
+    for (const key in p)
+      console.log(key)
+  })
 })

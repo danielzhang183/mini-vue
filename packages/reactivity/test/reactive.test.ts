@@ -42,7 +42,7 @@ describe('Array', () => {
     arr[0] = 'bar'
   })
 
-  it('modify array length to trigger', () => {
+  it.skip('modify array length to trigger', () => {
     const arr1 = reactive(['foo'])
     effect(() => console.log(arr1.length))
     arr1[1] = 'bar'
@@ -51,5 +51,17 @@ describe('Array', () => {
     arr1.length = 0
     expect(arr1.length).toBe(0)
     expect(arr1).toStrictEqual([])
+  })
+
+  it('for in', () => {
+    const arr2 = reactive(['foo'])
+
+    effect(() => {
+      for (const key in arr2)
+        console.log(key)
+    })
+
+    arr2[1] = 'bar'
+    arr2.length = 0
   })
 })

@@ -74,7 +74,7 @@ export function createReactive(obj: object, isShallow = false, isReadonly = fals
       return Reflect.has(target, key)
     },
     ownKeys(target) {
-      track(target, ITERATE_KEY)
+      track(target, isArray(target) ? 'length' : ITERATE_KEY)
       return Reflect.ownKeys(target)
     },
   })

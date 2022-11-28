@@ -1,4 +1,4 @@
-import { reactive } from '../src/reactive'
+import { createReactive } from '../src/reactive'
 
 export const obj = {
   foo: 1,
@@ -6,7 +6,8 @@ export const obj = {
   get baz() {
     return this.bar
   },
+  a: { b: 1 },
   ok: true,
 }
 
-export const p = reactive(obj)
+export const p = createReactive(obj)

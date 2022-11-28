@@ -1,12 +1,31 @@
 import { ITERATE_KEY, track, trigger } from './effect'
 import { TriggerOpTypes } from './operations'
-import { hasChanged, hasOwnProperty } from './utils'
+import { hasChanged, hasOwnProperty, isObject } from './utils'
 
 export function reactive(obj: object) {
+  return createReactive(obj)
+}
+
+export function shallowReactive(obj: object) {
+  return createReactive(obj, true)
+}
+
+export function createReactive(obj: object, isShallow = false): any {
   return new Proxy(obj, {
     get(target: any, key, receiver) {
+      if (key === 'raw')
+        return target
+
+      const res = Reflect.get(target, key, receiver)
       track(target, key)
-      return Reflect.get(target, key, receiver)
+
+      if (isShallow)
+        return res
+
+      if (isObject(res))
+        return createReactive(res)
+
+      return res
     },
     set(target: any, key, newVal, receiver) {
       const oldVal = target[key]

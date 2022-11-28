@@ -10,24 +10,39 @@ export function shallowReactive(obj: object) {
   return createReactive(obj, true)
 }
 
-export function createReactive(obj: object, isShallow = false): any {
+export function readonly(obj: object) {
+  return createReactive(obj, false, true)
+}
+
+export function shallowReadonly(obj: object) {
+  return createReactive(obj, true, true)
+}
+
+export function createReactive(obj: object, isShallow = false, isReadonly = false): any {
   return new Proxy(obj, {
     get(target: any, key, receiver) {
       if (key === 'raw')
         return target
 
       const res = Reflect.get(target, key, receiver)
-      track(target, key)
+
+      if (!isReadonly)
+        track(target, key)
 
       if (isShallow)
         return res
 
       if (isObject(res))
-        return createReactive(res)
+        return isReadonly ? readonly(res) : reactive(res)
 
       return res
     },
     set(target: any, key, newVal, receiver) {
+      if (isReadonly) {
+        console.warn(`Property ${key.toString()} isReadonly`)
+        return true
+      }
+
       const oldVal = target[key]
       const type = hasOwnProperty(target, key) ? TriggerOpTypes.SET : TriggerOpTypes.ADD
       const res = Reflect.set(target, key, newVal, receiver)
@@ -39,6 +54,11 @@ export function createReactive(obj: object, isShallow = false): any {
       target.call(thisArg, ...argArray)
     },
     defineProperty(target, key, receiver) {
+      if (isReadonly) {
+        console.warn(`Property ${key.toString()} isReadonly`)
+        return true
+      }
+
       const hadKey = hasOwnProperty(target, key)
       const res = Reflect.defineProperty(target, key, receiver)
       if (res && hadKey)

@@ -1,6 +1,6 @@
 import { ITERATE_KEY, track, trigger } from './effect'
 import { TriggerOpTypes } from './operations'
-import { hasChanged, hasOwnProperty, isObject } from './utils'
+import { hasChanged, hasOwnProperty, isArray, isObject } from './utils'
 
 export function reactive(obj: object) {
   return createReactive(obj)
@@ -44,10 +44,13 @@ export function createReactive(obj: object, isShallow = false, isReadonly = fals
       }
 
       const oldVal = target[key]
-      const type = hasOwnProperty(target, key) ? TriggerOpTypes.SET : TriggerOpTypes.ADD
+      const type = isArray(target)
+        ? Number(key) < target.length ? TriggerOpTypes.SET : TriggerOpTypes.ADD
+        : hasOwnProperty(target, key) ? TriggerOpTypes.SET : TriggerOpTypes.ADD
       const res = Reflect.set(target, key, newVal, receiver)
       if (target === receiver.raw && hasChanged(oldVal, newVal))
-        trigger(target, key, type)
+        trigger(target, key, type, newVal)
+
       return res
     },
     apply(target, thisArg, argArray) {

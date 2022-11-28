@@ -1,5 +1,6 @@
 import { TriggerOpTypes } from './operations'
-import type { DepKey, DepsMap, Effect, EffectOptions } from './types'
+import type { DepKey, Deps, DepsMap, Effect, EffectOptions } from './types'
+import { isArray, notNull } from './utils'
 
 const targetMap: WeakMap<Object, DepsMap> = new WeakMap()
 let activeEffect: Effect | undefined
@@ -49,17 +50,18 @@ export function track(target: any, key: DepKey) {
   activeEffect.deps.push(deps)
 }
 
-export function trigger(target: any, key: DepKey, type: TriggerOpTypes) {
+export function trigger(target: any, key: DepKey, type: TriggerOpTypes, newVal?: any) {
   const depsMap = targetMap.get(target)
   if (!depsMap)
     return
-
-  const effects = depsMap.get(key)
-  if (!effects)
-    return
-
-  const effectsToRun: Set<Effect> = new Set()
-  effects.forEach((effect) => {
+  const effects = isArray(target) && key === 'length'
+    ? Object.entries(depsMap)
+      .map(([key, effects]: [string, Deps]): boolean | undefined | Deps => (key >= newVal) && effects)
+      .filter(notNull)
+      .flat() as any as Deps
+    : depsMap.get(key)
+  const effectsToRun: Deps = new Set()
+  effects?.forEach((effect) => {
     if (effect !== activeEffect)
       effectsToRun.add(effect)
   })
@@ -67,6 +69,14 @@ export function trigger(target: any, key: DepKey, type: TriggerOpTypes) {
   if ([TriggerOpTypes.ADD, TriggerOpTypes.DELETE].includes(type)) {
     const iterateEffects = depsMap.get(ITERATE_KEY)
     iterateEffects?.forEach((effect) => {
+      if (effect !== activeEffect)
+        effectsToRun.add(effect)
+    })
+  }
+
+  if (isArray(target) && type === TriggerOpTypes.ADD) {
+    const lengthEffects = depsMap.get('length')
+    lengthEffects?.forEach((effect) => {
       if (effect !== activeEffect)
         effectsToRun.add(effect)
     })

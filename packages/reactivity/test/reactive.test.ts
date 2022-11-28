@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { effect, reactive, readonly, shallowReactive } from '../src'
 
-describe('reactive', () => {
-  it.skip('deep reactive - nesting object', () => {
+describe.skip('reactive', () => {
+  it('deep reactive - nesting object', () => {
     const obj = reactive({ foo: { bar: 1 } })
     effect(() => console.log(obj.foo.bar))
     // expect trigger twice
@@ -32,5 +32,24 @@ describe('reactive', () => {
     expect(obj3.foo.bar).toBe(2)
     obj3.foo.bar = 3
     expect(obj3.foo.bar).toBe(3)
+  })
+})
+
+describe('Array', () => {
+  it.skip('basic', () => {
+    const arr = reactive(['foo'])
+    effect(() => console.log(arr[0]))
+    arr[0] = 'bar'
+  })
+
+  it('modify array length to trigger', () => {
+    const arr1 = reactive(['foo'])
+    effect(() => console.log(arr1.length))
+    arr1[1] = 'bar'
+    expect(arr1.length).toBe(2)
+    expect(arr1).toStrictEqual(['foo', 'bar'])
+    arr1.length = 0
+    expect(arr1.length).toBe(0)
+    expect(arr1).toStrictEqual([])
   })
 })

@@ -1,6 +1,6 @@
 import { ITERATE_KEY, track, trigger } from './effect'
 import { TriggerOpTypes } from './operations'
-import { hasChanged, hasOwnProperty, isArray, isObject } from './utils'
+import { hasChanged, hasOwnProperty, isArray, isObject, isSymbol } from './utils'
 
 export function reactive(obj: object) {
   return createReactive(obj)
@@ -26,7 +26,7 @@ export function createReactive(obj: object, isShallow = false, isReadonly = fals
 
       const res = Reflect.get(target, key, receiver)
 
-      if (!isReadonly)
+      if (!isReadonly && !isSymbol(key))
         track(target, key)
 
       if (isShallow)

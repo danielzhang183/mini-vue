@@ -53,7 +53,7 @@ describe('Array', () => {
     expect(arr1).toStrictEqual([])
   })
 
-  it('for in', () => {
+  it.skip('for...in', () => {
     const arr2 = reactive(['foo'])
 
     effect(() => {
@@ -63,5 +63,17 @@ describe('Array', () => {
 
     arr2[1] = 'bar'
     arr2.length = 0
+  })
+
+  it('for...of', () => {
+    const arr3 = reactive(['foo'])
+
+    effect(() => {
+      for (const key of arr3.values())
+        console.log(key)
+    })
+
+    arr3[1] = 'bar'
+    arr3.length = 0
   })
 })

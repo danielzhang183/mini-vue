@@ -7,31 +7,45 @@ export enum FlushOps {
   POST = 'post',
 }
 
-export type Getter = Function | object | undefined
+export type WatchGetter = Function | object | undefined
 export interface WatchOptions {
   immediate?: boolean
   flush?: FlushOps
 }
+export type WatchCallback = (newVal: any, oldVal: any, onInvalidate: Function) => void
 
 const defaultOptions: WatchOptions = {
   immediate: false,
   flush: FlushOps.SYNC,
 }
 
-export function watch(source: Getter, cb: Function, options?: WatchOptions) {
+export function watch(
+  source: WatchGetter,
+  callback: WatchCallback,
+  options?: WatchOptions,
+) {
   let getter: Function
   if (isFunction(source))
     getter = source
   else
     getter = () => traverse(source)
 
-  options = Object.assign(defaultOptions, options)
+  options = Object.assign(defaultOptions, options || {})
 
   let oldVal: any, newVal
+
+  let cleanup: Function | undefined
+
+  function onInvalidate(fn: Function) {
+    cleanup = fn
+  }
   const job = () => {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     newVal = effectFn()
-    cb(newVal, oldVal)
+    if (cleanup)
+      cleanup()
+
+    callback(newVal, oldVal, onInvalidate)
     oldVal = newVal
   }
 

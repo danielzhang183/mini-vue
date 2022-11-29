@@ -1,17 +1,17 @@
 {
   "name": "@mini-vue/monorepo",
   "version": "0.0.0",
-  "packageManager": "pnpm@7.17.0",
   "private": "true",
+  "packageManager": "pnpm@7.17.0",
+  "author": "Daniel Zhang",
+  "license": "MIT",
+  "keywords": [
+    "mini-vue"
+  ],
   "scripts": {
     "build": "pnpm -r run build",
     "dev": "pnpm -C playground run dev"
   },
-  "keywords": [
-    "mini-vue"
-  ],
-  "author": "Daniel Zhang",
-  "license": "MIT",
   "dependencies": {
     "@antfu/eslint-config": "^0.31.0",
     "@mini-vue/shared": "workspace:*",
@@ -21,7 +21,7 @@
     "debug": "^4.3.4",
     "eslint": "^8.28.0",
     "esno": "^0.16.3",
-    "pnpm": "^7.17.0",
+    "pnpm": "^7.17.4",
     "rimraf": "^3.0.2",
     "typescript": "^4.9.3",
     "unbuild": "^1.0.1",

@@ -3,12 +3,12 @@
   "version": "0.0.0",
   "description": "",
   "author": "Daniel Zhang",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/danielzhang183/mini-vue.git",
     "directory": "packages/preset-mini"
   },
-  "license": "MIT",
   "sideEffects": false,
   "exports": {
     ".": {

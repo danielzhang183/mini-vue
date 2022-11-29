@@ -1,7 +1,11 @@
 {
-  "name": "@mini-vue/reactivity",
+  "name": "@mini-vue/runtime-core",
   "version": "0.0.0",
   "description": "",
+  "keywords": [
+    "mini-vue",
+    "runtime-core"
+  ],
   "author": "Daniel Zhang",
   "repository": {
     "type": "git",

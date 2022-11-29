@@ -1,6 +1,6 @@
+import { isArray, notNull } from '@mini-vue/shared'
 import { TriggerOpTypes } from './operations'
 import type { DepKey, Deps, DepsMap, Effect, EffectOptions } from './types'
-import { isArray, notNull } from './utils'
 
 const targetMap: WeakMap<Object, DepsMap> = new WeakMap()
 let activeEffect: Effect | undefined

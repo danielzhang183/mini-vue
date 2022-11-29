@@ -1,19 +1,24 @@
 {
-  "name": "mini-vue",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "name": "@mini-vue/monorepo",
+  "version": "0.0.0",
+  "packageManager": "pnpm@7.17.0",
   "private": "true",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "pnpm -r run build",
+    "dev": "pnpm -C playground run dev"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "mini-vue"
+  ],
+  "author": "Daniel Zhang",
+  "license": "MIT",
   "dependencies": {
     "@antfu/eslint-config": "^0.31.0",
+    "@mini-vue/shared": "workspace:*",
+    "@types/debug": "^4.1.7",
     "@types/node": "^18.11.9",
     "bumpp": "^8.2.1",
+    "debug": "^4.3.4",
     "eslint": "^8.28.0",
     "esno": "^0.16.3",
     "pnpm": "^7.17.0",

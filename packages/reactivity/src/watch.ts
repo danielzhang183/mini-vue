@@ -1,5 +1,5 @@
+import { isDef, isFunction, isObject } from '@mini-vue/shared'
 import { effect } from './effect'
-import { isDef, isFunction, isObject } from './utils'
 
 export enum FlushOps {
   PRE = 'pre',
@@ -77,6 +77,7 @@ export function traverse(value: any, seen = new Set()) {
 
   seen.add(value)
   for (const key in value)
+    // @ts-expect-error will fix
     traverse(value[key], seen)
 
   return value

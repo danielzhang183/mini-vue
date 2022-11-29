@@ -1,7 +1,11 @@
 {
-  "name": "@mini-vue/reactivity",
+  "name": "@mini-vue/shared",
   "version": "0.0.0",
-  "description": "",
+  "description": "Common utils for mini vue",
+  "keywords": [
+    "mini-vue",
+    "mini-vue-utils"
+  ],
   "author": "Daniel Zhang",
   "repository": {
     "type": "git",
@@ -27,8 +31,5 @@
     "build": "unbuild",
     "stub": "unbuild --stub",
     "test": "vitest"
-  },
-  "dependencies": {
-    "@mini-vue/shared": "workspace:*"
   }
 }

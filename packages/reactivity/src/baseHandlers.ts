@@ -1,5 +1,5 @@
+import { toRaw } from './reactive'
 import { enableTracking, pauseTracking } from './effect'
-import { toRaw } from './utils'
 
 export const arrayInstrumentations = createArrayInstrumentations()
 

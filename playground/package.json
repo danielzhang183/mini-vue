@@ -1,0 +1,10 @@
+{
+  "private": true,
+  "scripts": {
+    "dev": "vite --port 3333 --open"
+  },
+  "dependencies": {
+    "@mini-vue/runtime-core": "workspace: *",
+    "vite": "^3.2.4"
+  }
+}

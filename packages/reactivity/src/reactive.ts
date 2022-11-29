@@ -1,7 +1,7 @@
+import { hasChanged, hasOwnProperty, isArray, isObject, isSymbol } from '@mini-vue/shared'
 import { arrayInstrumentations } from './baseHandlers'
 import { ITERATE_KEY, track, trigger } from './effect'
 import { TriggerOpTypes } from './operations'
-import { hasChanged, hasOwnProperty, isArray, isObject, isSymbol } from './utils'
 
 export const enum ReactiveFlags {
   SKIP = '__v_skip',
@@ -17,6 +17,11 @@ export interface Target {
   [ReactiveFlags.IS_READONLY]?: boolean
   [ReactiveFlags.IS_SHALLOW]?: boolean
   [ReactiveFlags.RAW]?: any
+}
+
+export function toRaw<T>(observed: T): T {
+  const raw = observed && (observed as Target)[ReactiveFlags.RAW]
+  return raw ? toRaw(raw) : observed
 }
 
 const reactiveMap = new Map()
@@ -43,8 +48,6 @@ export function readonly(obj: object) {
 export function shallowReadonly(obj: object) {
   return createReactive(obj, true, true)
 }
-
-let shouldTrack = true
 
 export function createReactive(obj: object, isShallow = false, isReadonly = false): any {
   return new Proxy(obj, {

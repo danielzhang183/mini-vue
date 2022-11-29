@@ -1,5 +1,5 @@
 {
-  "name": "@mini-vue/runtime-core",
+  "name": "@mini-vue/runtime-dom",
   "version": "0.0.0",
   "description": "",
   "keywords": [
@@ -10,7 +10,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/danielzhang183/mini-vue.git",
-    "directory": "packages/runtime-core"
+    "directory": "packages/runtime-dom"
   },
   "license": "MIT",
   "sideEffects": false,
@@ -33,7 +33,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@mini-vue/runtime-dom": "workspace:*",
+    "@mini-vue/runtime-core": "workspace:*",
     "@mini-vue/shared": "workspace:*"
   }
 }

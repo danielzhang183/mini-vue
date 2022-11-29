@@ -40,8 +40,18 @@ importers:
 
   packages/runtime-core:
     specifiers:
+      '@mini-vue/runtime-dom': workspace:*
       '@mini-vue/shared': workspace:*
     dependencies:
+      '@mini-vue/runtime-dom': link:../runtime-dom
+      '@mini-vue/shared': link:../shared
+
+  packages/runtime-dom:
+    specifiers:
+      '@mini-vue/runtime-core': workspace:*
+      '@mini-vue/shared': workspace:*
+    dependencies:
+      '@mini-vue/runtime-core': link:../runtime-core
       '@mini-vue/shared': link:../shared
 
   packages/shared:

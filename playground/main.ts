@@ -1,11 +1,12 @@
 import type { VNode } from '../packages/runtime-core/src'
-import { createRenderer, rendererOptions } from '../packages/runtime-core/src'
+import { render } from '../packages/runtime-dom/src'
 
 const vnode: VNode = {
   __v_isVNode: true,
   type: 'h1',
   props: {
     id: 'foo',
+    class: 'bar baz',
   },
   children: [
     {
@@ -17,5 +18,4 @@ const vnode: VNode = {
   ],
 }
 
-const renderer = createRenderer(rendererOptions)
-renderer.render(vnode, document.querySelector('#app'))
+render(vnode, document.querySelector('#app'))

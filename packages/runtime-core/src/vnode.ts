@@ -1,4 +1,4 @@
-// import type { RendererElement, RendererNode } from './renderer'
+import type { RendererNode } from './renderer'
 
 export interface VNodeProps {
   key?: string | number | symbol
@@ -33,7 +33,7 @@ export type VNodeNormalizedChildren =
   | null
 
 export interface VNode<
-  //   HostNode = RendererNode,
+  HostNode = RendererNode,
   //   HostElement = RendererElement,
   ExtraProps = { [key: string]: any },
 > {
@@ -48,7 +48,7 @@ export interface VNode<
   children: VNodeNormalizedChildren
 
   // DOM
-  // el: HostNode | null
+  el: HostNode | null
   // anchor: HostNode | null // fragment anchor
   // target: HostElement | null // teleport target
   // targetAnchor: HostNode | null // teleport target anchor

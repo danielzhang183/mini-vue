@@ -8,14 +8,18 @@ const vnode: VNode = {
     id: 'foo',
     class: 'bar baz',
   },
+  el: null,
   children: [
     {
       __v_isVNode: true,
       type: 'p',
       children: 'hello',
       props: null,
+      el: null,
     },
   ],
 }
 
-render(vnode, document.querySelector('#app'))
+const container = document.querySelector('#app')
+render(vnode, container)
+render(null, container)

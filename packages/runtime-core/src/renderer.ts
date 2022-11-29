@@ -28,6 +28,10 @@ type PatchFn = (
   anchor?: RendererNode | null,
 ) => void
 
+type UnmountFn = (
+  vnode: VNode,
+) => void
+
 export type RootRenderFunction<HostElement = RendererElement> = (
   vnode: VNode | null,
   container: HostElement,
@@ -58,11 +62,11 @@ export function baseCreateRenderer(options: RendererOptions): any {
     if (!n1)
       mountElement(n2, container)
     else
-      console.log('')
+      console.log('更新')
   }
 
   function mountElement(vnode: VNode, container: RendererElement) {
-    const el = createElement(vnode.type as string)
+    const el = vnode.el = createElement(vnode.type as string)
     const { props } = vnode
 
     if (isString(vnode.children))
@@ -80,13 +84,19 @@ export function baseCreateRenderer(options: RendererOptions): any {
     insert(el, container)
   }
 
+  const unmount: UnmountFn = (vnode) => {
+    const parent = vnode.el?.parentNode
+    if (parent)
+      parent.removeChild(vnode.el)
+  }
+
   const render: RootRenderFunction = (vnode, container) => {
     if (vnode) {
       patch(container?._vnode || null, vnode, container)
     }
     else {
       if (container._vnode)
-        container.innerHTML = ''
+        unmount(container._vnode)
     }
     container._vnode = vnode
   }

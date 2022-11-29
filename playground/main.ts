@@ -4,7 +4,17 @@ import { createRenderer, rendererOptions } from '../packages/runtime-core/src'
 const vnode: VNode = {
   __v_isVNode: true,
   type: 'h1',
-  children: 'hello',
+  props: {
+    id: 'foo',
+  },
+  children: [
+    {
+      __v_isVNode: true,
+      type: 'p',
+      children: 'hello',
+      props: null,
+    },
+  ],
 }
 
 const renderer = createRenderer(rendererOptions)

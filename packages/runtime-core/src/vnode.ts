@@ -32,19 +32,18 @@ export type VNodeNormalizedChildren =
   // | RawSlots
   | null
 
-export interface VNode {
-  // <
+export interface VNode<
   //   HostNode = RendererNode,
   //   HostElement = RendererElement,
-  //   ExtraProps = { [key: string]: any },
-  // > {
+  ExtraProps = { [key: string]: any },
+> {
   /**
    * @internal
    */
   __v_isVNode: true
 
   type: VNodeTypes
-  // props: (VNodeProps & ExtraProps) | null
+  props: (VNodeProps & ExtraProps) | null
   // key: string | number | symbol | null
   children: VNodeNormalizedChildren
 

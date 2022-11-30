@@ -8,5 +8,10 @@ export default defineBuildConfig({
   clean: true,
   rollup: {
     emitCJS: true,
+    esbuild: {
+      define: {
+        __DEV__: process.env.NODE_ENV !== 'production',
+      },
+    },
   },
 })

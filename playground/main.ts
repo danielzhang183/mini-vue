@@ -1,4 +1,5 @@
 import type { VNode } from '../packages/runtime-core/src'
+import { Comment, Text } from '../packages/runtime-core/src'
 import { render } from '../packages/runtime-dom/src'
 
 const vnode: VNode = {
@@ -21,6 +22,22 @@ const vnode: VNode = {
       el: null,
       shapeFlag: 1,
     },
+    {
+      __v_isVNode: true,
+      type: Text,
+      children: 'I\'m text node',
+      props: null,
+      el: null,
+      shapeFlag: 1,
+    },
+    // {
+    //   __v_isVNode: true,
+    //   type: Comment,
+    //   children: 'I\'m comment node',
+    //   props: null,
+    //   el: null,
+    //   shapeFlag: 1,
+    // },
   ],
 }
 

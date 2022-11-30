@@ -1,4 +1,4 @@
-import { ShapeFlags, isArray, isString } from '@mini-vue/shared'
+import { EMPTY_OBJ, ShapeFlags, isArray, isString } from '@mini-vue/shared'
 import type { VNode } from './vnode'
 import { Text } from './vnode'
 
@@ -35,6 +35,12 @@ type UnmountFn = (
 ) => void
 
 type ProcessTextOrCommentFn = (
+  n1: VNode | null,
+  n2: VNode,
+  container: RendererElement,
+) => void
+
+type PatchChildrenFn = (
   n1: VNode | null,
   n2: VNode,
   container: RendererElement,
@@ -132,8 +138,55 @@ export function baseCreateRenderer(options: RendererOptions): any {
     n1: VNode,
     n2: VNode,
   ) => {
-    // TODO: patch element
-    console.log(n1, n2)
+    const el = (n2.el = n1.el!)
+    const oldProps = n1.props || EMPTY_OBJ
+    const newProps = n2.props || EMPTY_OBJ
+
+    // update props
+    for (const key in newProps) {
+      if (newProps[key] !== oldProps[key])
+        hostPatchProp(el, key, oldProps[key], newProps[key])
+    }
+    for (const key in oldProps) {
+      if (!(key in newProps))
+        hostPatchProp(el, key, oldProps[key], null)
+    }
+
+    patchChildren(n1, n2, el)
+  }
+
+  // cover 9 situations
+  const patchChildren: PatchChildrenFn = (
+    n1,
+    n2,
+    container,
+  ) => {
+    if (isString(n2.children)) {
+      if (n1 != null && isArray(n1.children))
+        // @ts-expect-error vnode transformer
+        n1.children.forEach(i => unmount(i))
+      hostSetText(container, n2.children)
+    }
+    else if (isArray(n2.children)) {
+      if (n1 != null && isArray(n1.children)) {
+        // TODO: refine core diff
+        n1.children.forEach(i => unmount(i))
+        n2.children.forEach(i => patch(null, i, container))
+      }
+      else {
+        hostSetText(container, '')
+        // @ts-expect-error vnode transformer
+        n2.children.forEach(i => patch(null, i, container))
+      }
+    }
+    else {
+      if (n1 == null)
+        return
+      if (isArray(n1.children))
+        n1.children.forEach(i => unmount(i))
+      else if (isString(n1.children))
+        hostSetText(container, '')
+    }
   }
 
   const unmount: UnmountFn = (vnode) => {

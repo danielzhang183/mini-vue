@@ -190,7 +190,7 @@ export function baseCreateRenderer(options: RendererOptions): any {
       if (n1 != null && isArray(n1.children))
         // @ts-expect-error vnode transformer
         n1.children.forEach(i => unmount(i))
-      hostSetElementText(container, n2.children)
+      hostSetElementText(container, n2.children as string)
     }
     else if (isArray(n2.children)) {
       if (n1 != null && isArray(n1.children)) {

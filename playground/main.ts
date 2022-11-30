@@ -1,45 +1,23 @@
-import type { VNode } from '../packages/runtime-core/src'
-import { Comment, Text } from '../packages/runtime-core/src'
-import { render } from '../packages/runtime-dom/src'
+/* eslint-disable no-alert */
+import { createCommentVNode, createElementVnode, createTextVNode } from '../packages/runtime-core'
+import { render } from '../packages/runtime-dom'
 
-const vnode: VNode = {
-  __v_isVNode: true,
-  type: 'h1',
-  props: {
+const textVNode = createTextVNode('Text Node here')
+const commentVNode = createCommentVNode('comment Node here')
+const vnode = createElementVnode(
+  'h1',
+  {
     id: 'foo',
     class: 'bar baz',
     onclick: () => alert('hello'),
     oncontextmenu: () => alert('contextmenu'),
   },
-  el: null,
-  shapeFlag: 1,
-  children: [
-    {
-      __v_isVNode: true,
-      type: 'p',
-      children: 'hello',
-      props: null,
-      el: null,
-      shapeFlag: 1,
-    },
-    {
-      __v_isVNode: true,
-      type: Text,
-      children: 'I\'m text node',
-      props: null,
-      el: null,
-      shapeFlag: 1,
-    },
-    // {
-    //   __v_isVNode: true,
-    //   type: Comment,
-    //   children: 'I\'m comment node',
-    //   props: null,
-    //   el: null,
-    //   shapeFlag: 1,
-    // },
+  [
+    textVNode,
+    commentVNode,
   ],
-}
+)
+console.log(vnode)
 
 const container = document.querySelector('#app')
 render(vnode, container)

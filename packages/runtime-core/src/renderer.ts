@@ -1,6 +1,6 @@
 import { EMPTY_OBJ, ShapeFlags, isArray, isString } from '@mini-vue/shared'
 import type { VNode } from './vnode'
-import { Text } from './vnode'
+import { Comment, Text } from './vnode'
 
 export interface Renderer<HostElement = RendererElement> {
   render: RootRenderFunction<HostElement>
@@ -19,7 +19,10 @@ export interface RendererOptions<
   insert(el: HostElement, parent: HostElement, anchor?: HostNode | null): void
   remove(el: HostNode): void
   createElement(type: string): HostElement
+  createText(text: string): HostNode
+  createComment(text: string): HostNode
   setElementText(node: HostElement, text: string): void
+  setText(node: HostNode, text: string): void
   patchProp(el: HostElement, key: string, prevValue: any, nextValue: any): void
 }
 
@@ -38,6 +41,7 @@ type ProcessTextOrCommentFn = (
   n1: VNode | null,
   n2: VNode,
   container: RendererElement,
+  anchor?: RendererNode | null,
 ) => void
 
 type PatchChildrenFn = (
@@ -68,8 +72,11 @@ export function baseCreateRenderer(options: RendererOptions): any {
   const {
     insert: hostInsert,
     remove: hostRemove,
-    createElement: hostCreateText,
-    setElementText: hostSetText,
+    createElement: hostCreateElement,
+    setElementText: hostSetElementText,
+    createText: hostCreateText,
+    setText: hostSetText,
+    createComment: hostCreateComment,
     patchProp: hostPatchProp,
   } = options
 
@@ -84,23 +91,41 @@ export function baseCreateRenderer(options: RendererOptions): any {
       case Text:
         processText(n1, n2, container)
         break
+      case Comment:
+        processCommentNode(n1, n2, container)
+        break
       default:
         if (shapeFlag & ShapeFlags.ELEMENT)
           processElement(n1, n2, container)
     }
   }
 
-  const processText: ProcessTextOrCommentFn = (n1, n2, container) => {
+  const processText: ProcessTextOrCommentFn = (n1, n2, container, anchor) => {
     if (n1 == null) {
       hostInsert(
         (n2.el = hostCreateText(n2.children as string)),
         container,
+        anchor,
       )
     }
     else {
       const el = (n2.el = n1.el!)
       if (n2.children !== n1.children)
         hostSetText(el, n2.children as string)
+    }
+  }
+
+  const processCommentNode: ProcessTextOrCommentFn = (n1, n2, container, anchor) => {
+    if (n1 == null) {
+      hostInsert(
+        (n2.el = hostCreateComment((n2.children as string) || '')),
+        container,
+        anchor,
+      )
+    }
+    else {
+      // there's no support for dynamic comments
+      n2.el = n1.el
     }
   }
 
@@ -116,11 +141,11 @@ export function baseCreateRenderer(options: RendererOptions): any {
   }
 
   const mountElement = (vnode: VNode, container: RendererElement) => {
-    const el = vnode.el = hostCreateText(vnode.type as string)
+    const el = vnode.el = hostCreateElement(vnode.type as string)
     const { props } = vnode
 
     if (isString(vnode.children))
-      hostSetText(el, vnode.children as string)
+      hostSetElementText(el, vnode.children as string)
     else if (isArray(vnode.children))
       // @ts-expect-error will fix
       vnode.children.forEach(child => patch(null, child, el))
@@ -165,16 +190,18 @@ export function baseCreateRenderer(options: RendererOptions): any {
       if (n1 != null && isArray(n1.children))
         // @ts-expect-error vnode transformer
         n1.children.forEach(i => unmount(i))
-      hostSetText(container, n2.children)
+      hostSetElementText(container, n2.children)
     }
     else if (isArray(n2.children)) {
       if (n1 != null && isArray(n1.children)) {
         // TODO: refine core diff
+        // @ts-expect-error vnode transformer
         n1.children.forEach(i => unmount(i))
+        // @ts-expect-error vnode transformer
         n2.children.forEach(i => patch(null, i, container))
       }
       else {
-        hostSetText(container, '')
+        hostSetElementText(container, '')
         // @ts-expect-error vnode transformer
         n2.children.forEach(i => patch(null, i, container))
       }
@@ -183,9 +210,10 @@ export function baseCreateRenderer(options: RendererOptions): any {
       if (n1 == null)
         return
       if (isArray(n1.children))
+        // @ts-expect-error vnode transformer
         n1.children.forEach(i => unmount(i))
       else if (isString(n1.children))
-        hostSetText(container, '')
+        hostSetElementText(container, '')
     }
   }
 

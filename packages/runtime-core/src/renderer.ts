@@ -16,9 +16,10 @@ export interface RendererOptions<
   HostNode = RendererNode,
   HostElement = RendererElement,
 > {
+  insert(el: HostElement, parent: HostElement, anchor?: HostNode | null): void
+  remove(el: HostNode): void
   createElement(type: string): HostElement
   setElementText(node: HostElement, text: string): void
-  insert(el: HostElement, parent: HostElement, anchor?: HostNode | null): void
   patchProp(el: HostElement, key: string, prevValue: any, nextValue: any): void
 }
 
@@ -59,17 +60,12 @@ export function baseCreateRenderer<
 
 export function baseCreateRenderer(options: RendererOptions): any {
   const {
+    insert: hostInsert,
+    remove: hostRemove,
     createElement: hostCreateText,
     setElementText: hostSetText,
-    insert: hostInsert,
     patchProp: hostPatchProp,
   } = options
-
-  const unmount: UnmountFn = (vnode) => {
-    const parent = vnode.el?.parentNode
-    if (parent)
-      parent.removeChild(vnode.el)
-  }
 
   const patch: PatchFn = (n1, n2, container) => {
     if (n1 && n1.type !== n2.type) {
@@ -138,6 +134,10 @@ export function baseCreateRenderer(options: RendererOptions): any {
   ) => {
     // TODO: patch element
     console.log(n1, n2)
+  }
+
+  const unmount: UnmountFn = (vnode) => {
+    hostRemove(vnode)
   }
 
   const render: RootRenderFunction = (vnode, container) => {

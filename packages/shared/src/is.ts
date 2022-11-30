@@ -7,3 +7,7 @@ export const isObject = (val: unknown): val is object => toString(val) === '[obj
 export const isFunction = <T extends Function>(val: unknown): val is T => typeof val === 'function'
 export const isArray = Array.isArray
 export const isSymbol = (val: unknown): val is symbol => typeof val === 'symbol'
+
+const onRE = /^on[^a-z]/
+export const isOn = (key: string) => onRE.test(key)
+export const isModelListener = (key: string) => key.startsWith('onUpdate:')

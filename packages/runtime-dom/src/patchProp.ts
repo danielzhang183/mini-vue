@@ -1,6 +1,8 @@
 import type { RendererOptions } from '@mini-vue/runtime-core'
+import { isModelListener, isOn } from '@mini-vue/shared'
 import { patchAttr } from './modules/attrs'
 import { patchClass } from './modules/class'
+import { patchEvent } from './modules/events'
 import { patchDOMProp } from './modules/props'
 import { patchStyle } from './modules/style'
 
@@ -14,13 +16,12 @@ export const patchProp: DOMRendererOptions['patchProp'] = (
 ) => {
   if (key === 'class')
     patchClass(el, nextValue)
-
   else if (key === 'style')
     patchStyle(el, prevValue, nextValue)
-
+  else if (isOn(key))
+    !isModelListener(key) && patchEvent(el, key, prevValue, nextValue)
   else if (shouldSetAsProps(el, key))
     patchDOMProp(el, key, nextValue)
-
   else
     patchAttr(el, key, nextValue)
 }

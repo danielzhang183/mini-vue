@@ -7,8 +7,11 @@ const vnode: VNode = {
   props: {
     id: 'foo',
     class: 'bar baz',
+    onclick: () => alert('hello'),
+    oncontextmenu: () => alert('contextmenu'),
   },
   el: null,
+  shapeFlag: 1,
   children: [
     {
       __v_isVNode: true,
@@ -16,10 +19,11 @@ const vnode: VNode = {
       children: 'hello',
       props: null,
       el: null,
+      shapeFlag: 1,
     },
   ],
 }
 
 const container = document.querySelector('#app')
 render(vnode, container)
-render(null, container)
+// render(null, container)

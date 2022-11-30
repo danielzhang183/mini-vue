@@ -2,6 +2,7 @@
   "extends": "@antfu",
   "rules": {
     "no-console": "off",
-    "import/no-mutable-exports": "off"
+    "import/no-mutable-exports": "off",
+    "@typescript-eslint/no-use-before-define": "off"
   }
 }

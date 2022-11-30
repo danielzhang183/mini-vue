@@ -1,5 +1,6 @@
-import { isArray, isString } from '@mini-vue/shared'
+import { ShapeFlags, isArray, isString } from '@mini-vue/shared'
 import type { VNode } from './vnode'
+import { Text } from './vnode'
 
 export interface Renderer<HostElement = RendererElement> {
   render: RootRenderFunction<HostElement>
@@ -32,6 +33,12 @@ type UnmountFn = (
   vnode: VNode,
 ) => void
 
+type ProcessTextOrCommentFn = (
+  n1: VNode | null,
+  n2: VNode,
+  container: RendererElement,
+) => void
+
 export type RootRenderFunction<HostElement = RendererElement> = (
   vnode: VNode | null,
   container: HostElement,
@@ -52,25 +59,66 @@ export function baseCreateRenderer<
 
 export function baseCreateRenderer(options: RendererOptions): any {
   const {
-    createElement,
-    setElementText,
-    insert,
-    patchProp,
+    createElement: hostCreateText,
+    setElementText: hostSetText,
+    insert: hostInsert,
+    patchProp: hostPatchProp,
   } = options
 
-  const patch: PatchFn = (n1, n2, container) => {
-    if (!n1)
-      mountElement(n2, container)
-    else
-      console.log('更新')
+  const unmount: UnmountFn = (vnode) => {
+    const parent = vnode.el?.parentNode
+    if (parent)
+      parent.removeChild(vnode.el)
   }
 
-  function mountElement(vnode: VNode, container: RendererElement) {
-    const el = vnode.el = createElement(vnode.type as string)
+  const patch: PatchFn = (n1, n2, container) => {
+    if (n1 && n1.type !== n2.type) {
+      unmount(n1)
+      n1 = null
+    }
+
+    const { type, shapeFlag } = n2
+    switch (type) {
+      case Text:
+        processText(n1, n2, container)
+        break
+      default:
+        if (shapeFlag & ShapeFlags.ELEMENT)
+          processElement(n1, n2, container)
+    }
+  }
+
+  const processText: ProcessTextOrCommentFn = (n1, n2, container) => {
+    if (n1 == null) {
+      hostInsert(
+        (n2.el = hostCreateText(n2.children as string)),
+        container,
+      )
+    }
+    else {
+      const el = (n2.el = n1.el!)
+      if (n2.children !== n1.children)
+        hostSetText(el, n2.children as string)
+    }
+  }
+
+  const processElement = (
+    n1: VNode | null,
+    n2: VNode,
+    container: RendererElement,
+  ) => {
+    if (n1 == null)
+      mountElement(n2, container)
+    else
+      patchElement(n1, n2)
+  }
+
+  const mountElement = (vnode: VNode, container: RendererElement) => {
+    const el = vnode.el = hostCreateText(vnode.type as string)
     const { props } = vnode
 
     if (isString(vnode.children))
-      setElementText(el, vnode.children as string)
+      hostSetText(el, vnode.children as string)
     else if (isArray(vnode.children))
       // @ts-expect-error will fix
       vnode.children.forEach(child => patch(null, child, el))
@@ -78,16 +126,18 @@ export function baseCreateRenderer(options: RendererOptions): any {
     // set props
     if (props) {
       for (const key in props)
-        patchProp(el, key, null, props[key])
+        hostPatchProp(el, key, null, props[key])
     }
 
-    insert(el, container)
+    hostInsert(el, container)
   }
 
-  const unmount: UnmountFn = (vnode) => {
-    const parent = vnode.el?.parentNode
-    if (parent)
-      parent.removeChild(vnode.el)
+  const patchElement = (
+    n1: VNode,
+    n2: VNode,
+  ) => {
+    // TODO: patch element
+    console.log(n1, n2)
   }
 
   const render: RootRenderFunction = (vnode, container) => {

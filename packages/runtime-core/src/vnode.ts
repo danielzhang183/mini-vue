@@ -52,6 +52,8 @@ export interface VNode<
   // anchor: HostNode | null // fragment anchor
   // target: HostElement | null // teleport target
   // targetAnchor: HostNode | null // teleport target anchor
+
+  shapeFlag: number
 }
 
 export const Fragment = Symbol('Fragment') as any as {

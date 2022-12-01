@@ -132,7 +132,7 @@ export function createVNode(
   )
 }
 
-export { createBaseVNode as createElementVnode }
+export { createBaseVNode as createElementVNode }
 
 function createBaseVNode(
   type: VNodeTypes,

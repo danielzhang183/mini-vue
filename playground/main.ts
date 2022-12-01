@@ -1,10 +1,10 @@
 /* eslint-disable no-alert */
-import { createCommentVNode, createElementVnode, createTextVNode } from '../packages/runtime-core'
+import { createCommentVNode, createElementVNode, createTextVNode } from '../packages/runtime-core'
 import { render } from '../packages/runtime-dom'
 
 const textVNode = createTextVNode('Text Node here')
 const commentVNode = createCommentVNode('comment Node here')
-const vnode = createElementVnode(
+const vnode = createElementVNode(
   'h1',
   {
     id: 'foo',

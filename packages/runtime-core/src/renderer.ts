@@ -194,11 +194,11 @@ export function baseCreateRenderer(options: RendererOptions): any {
     }
     else if (isArray(n2.children)) {
       if (n1 != null && isArray(n1.children)) {
-        // TODO: refine core diff
-        // @ts-expect-error vnode transformer
-        n1.children.forEach(i => unmount(i))
-        // @ts-expect-error vnode transformer
-        n2.children.forEach(i => patch(null, i, container))
+        const oldChildren = n1.children
+        const newChildren = n2.children
+        for (let i = 0; i < oldChildren.length; i++)
+          // @ts-expect-error vnode transformer
+          patch(oldChildren[i], newChildren[i], container)
       }
       else {
         hostSetElementText(container, '')

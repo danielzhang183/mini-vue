@@ -1,4 +1,4 @@
-import { hasChanged, hasOwnProperty, isArray, isObject, isSymbol } from '@mini-vue/shared'
+import { def, hasChanged, hasOwnProperty, isArray, isObject, isSymbol } from '@mini-vue/shared'
 import { arrayInstrumentations } from './baseHandlers'
 import { ITERATE_KEY, track, trigger } from './effect'
 import { TriggerOpTypes } from './operations'
@@ -17,6 +17,15 @@ export interface Target {
   [ReactiveFlags.IS_READONLY]?: boolean
   [ReactiveFlags.IS_SHALLOW]?: boolean
   [ReactiveFlags.RAW]?: any
+}
+
+export declare const RawSymbol: unique symbol
+
+export function markRaw<T extends object>(
+  value: T,
+): T & { [RawSymbol]?: true } {
+  def(value, ReactiveFlags.SKIP, true)
+  return value
 }
 
 export function toRaw<T>(observed: T): T {

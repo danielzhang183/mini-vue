@@ -32,4 +32,4 @@ export function renderToString(vnode: VNode) {
 export * from './triggerEvent'
 export * from './serialize'
 export * from './nodeOps'
-// export * from '@mini-vue/runtime-core'
+export * from '@mini-vue/runtime-core'

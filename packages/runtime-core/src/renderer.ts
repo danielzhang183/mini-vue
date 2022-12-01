@@ -1,6 +1,6 @@
-import { EMPTY_OBJ, ShapeFlags, isArray, isString } from '@mini-vue/shared'
-import type { VNode } from './vnode'
-import { Comment, Text } from './vnode'
+import { EMPTY_OBJ, ShapeFlags } from '@mini-vue/shared'
+import type { VNode, VNodeArrayChildren } from './vnode'
+import { Comment, Text, normalizeVNode } from './vnode'
 
 export interface Renderer<HostElement = RendererElement> {
   render: RootRenderFunction<HostElement>
@@ -48,6 +48,13 @@ type PatchChildrenFn = (
   n1: VNode | null,
   n2: VNode,
   container: RendererElement,
+) => void
+
+type MountChildrenFn = (
+  children: VNodeArrayChildren,
+  container: RendererElement,
+  anchor: RendererNode | null,
+  start?: number
 ) => void
 
 export type RootRenderFunction<HostElement = RendererElement> = (
@@ -142,13 +149,18 @@ export function baseCreateRenderer(options: RendererOptions): any {
 
   const mountElement = (vnode: VNode, container: RendererElement) => {
     const el = vnode.el = hostCreateElement(vnode.type as string)
-    const { props } = vnode
+    const { props, shapeFlag } = vnode
 
-    if (isString(vnode.children))
+    if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
       hostSetElementText(el, vnode.children as string)
-    else if (isArray(vnode.children))
-      // @ts-expect-error will fix
-      vnode.children.forEach(child => patch(null, child, el))
+    }
+    else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+      mountChildren(
+        vnode.children as VNodeArrayChildren,
+        el,
+        null,
+      )
+    }
 
     // set props
     if (props) {
@@ -157,6 +169,18 @@ export function baseCreateRenderer(options: RendererOptions): any {
     }
 
     hostInsert(el, container)
+  }
+
+  const mountChildren: MountChildrenFn = (children, container, anchor, start = 0) => {
+    for (let i = start; i < children.length; i++) {
+      const child = normalizeVNode(children[i])
+      patch(
+        null,
+        child,
+        container,
+        anchor,
+      )
+    }
   }
 
   const patchElement = (
@@ -186,33 +210,38 @@ export function baseCreateRenderer(options: RendererOptions): any {
     n2,
     container,
   ) => {
-    if (isString(n2.children)) {
-      if (n1 != null && isArray(n1.children))
+    const c1 = n1 && n1.children
+    const prevShapeFlag = n1 ? n1.shapeFlag : 0
+    const c2 = n2.children
+    const { shapeFlag } = n2
+
+    if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN)
         // @ts-expect-error vnode transformer
-        n1.children.forEach(i => unmount(i))
-      hostSetElementText(container, n2.children as string)
+        c1.forEach(i => unmount(i))
+
+      if (c2 !== c1)
+        hostSetElementText(container, c2 as string)
     }
-    else if (isArray(n2.children)) {
-      if (n1 != null && isArray(n1.children)) {
-        const oldChildren = n1.children
-        const newChildren = n2.children
-        for (let i = 0; i < oldChildren.length; i++)
+    else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+      if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        for (let i = 0; i < c2!.length; i++)
           // @ts-expect-error vnode transformer
-          patch(oldChildren[i], newChildren[i], container)
+          patch(c1[i], c2[i], container)
       }
       else {
         hostSetElementText(container, '')
         // @ts-expect-error vnode transformer
-        n2.children.forEach(i => patch(null, i, container))
+        c2.forEach(i => patch(null, i, container))
       }
     }
     else {
       if (n1 == null)
         return
-      if (isArray(n1.children))
+      if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN)
         // @ts-expect-error vnode transformer
-        n1.children.forEach(i => unmount(i))
-      else if (isString(n1.children))
+        c1.forEach(i => unmount(i))
+      else if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN)
         hostSetElementText(container, '')
     }
   }

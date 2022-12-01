@@ -6,6 +6,7 @@
   },
   "dependencies": {
     "@mini-vue/runtime-core": "workspace:*",
+    "@mini-vue/runtime-dom": "workspace:*",
     "vite": "^3.2.4"
   }
 }

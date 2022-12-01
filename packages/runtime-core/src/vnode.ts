@@ -1,4 +1,4 @@
-import { ShapeFlags, isArray, isFunction, isObject, isString } from '@mini-vue/shared'
+import { ShapeFlags, isArray, isBoolean, isFunction, isObject, isString } from '@mini-vue/shared'
 import type { RendererElement, RendererNode } from './renderer'
 
 export type Data = Record<string, unknown>
@@ -28,6 +28,8 @@ type VNodeChildAtom =
   | void
 
 export type VNodeArrayChildren = Array<VNodeArrayChildren | VNodeChildAtom>
+
+export type VNodeChild = VNodeChildAtom | VNodeArrayChildren
 
 export type VNodeNormalizedChildren =
   | string
@@ -212,4 +214,22 @@ function normalizeChildren(vnode: VNode, children: unknown) {
 
   vnode.children = children as VNodeArrayChildren
   vnode.shapeFlag |= type
+}
+
+export function normalizeVNode(child: VNodeChild): VNode {
+  if (child == null || isBoolean(child)) {
+    return createVNode(Comment)
+  }
+  else if (isArray(child)) {
+    return createVNode(Fragment, null, child.slice())
+  }
+  else if (isObject(child)) {
+    // already vnode, this should be the most common since compiled templates
+    // always produce all-vnode children array
+    // TODO: handle
+    return child
+  }
+  else {
+    return createVNode(Text, null, String(child))
+  }
 }

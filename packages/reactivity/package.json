@@ -25,7 +25,6 @@
   ],
   "scripts": {
     "build": "unbuild",
-    "stub": "unbuild --stub",
     "test": "vitest"
   },
   "dependencies": {

@@ -1,6 +1,6 @@
 import { EMPTY_OBJ, ShapeFlags } from '@mini-vue/shared'
 import type { VNode, VNodeArrayChildren } from './vnode'
-import { Comment, Text, normalizeVNode } from './vnode'
+import { Comment, Text, isSameVNodeType, normalizeVNode } from './vnode'
 
 export interface Renderer<HostElement = RendererElement> {
   render: RootRenderFunction<HostElement>
@@ -24,13 +24,16 @@ export interface RendererOptions<
   setElementText(node: HostElement, text: string): void
   setText(node: HostNode, text: string): void
   patchProp(el: HostElement, key: string, prevValue: any, nextValue: any): void
+  parentNode(node: HostNode): HostElement | null
+  nextSibling(node: HostNode): HostNode | null
+  querySelector?(selector: string): HostElement | null
 }
 
 type PatchFn = (
   n1: VNode | null,
   n2: VNode,
   container: RendererElement,
-  anchor?: RendererNode | null,
+  anchor: RendererNode | null,
 ) => void
 
 type UnmountFn = (
@@ -85,9 +88,11 @@ export function baseCreateRenderer(options: RendererOptions): any {
     setText: hostSetText,
     createComment: hostCreateComment,
     patchProp: hostPatchProp,
+    // parentNode: hostParentNode,
+    nextSibling: hostNextSibling,
   } = options
 
-  const patch: PatchFn = (n1, n2, container) => {
+  const patch: PatchFn = (n1, n2, container, anchor) => {
     if (n1 && n1.type !== n2.type) {
       unmount(n1)
       n1 = null
@@ -96,14 +101,14 @@ export function baseCreateRenderer(options: RendererOptions): any {
     const { type, shapeFlag } = n2
     switch (type) {
       case Text:
-        processText(n1, n2, container)
+        processText(n1, n2, container, anchor)
         break
       case Comment:
-        processCommentNode(n1, n2, container)
+        processCommentNode(n1, n2, container, anchor)
         break
       default:
         if (shapeFlag & ShapeFlags.ELEMENT)
-          processElement(n1, n2, container)
+          processElement(n1, n2, container, anchor)
     }
   }
 
@@ -140,14 +145,15 @@ export function baseCreateRenderer(options: RendererOptions): any {
     n1: VNode | null,
     n2: VNode,
     container: RendererElement,
+    anchor: RendererNode | null,
   ) => {
     if (n1 == null)
-      mountElement(n2, container)
+      mountElement(n2, container, anchor)
     else
       patchElement(n1, n2)
   }
 
-  const mountElement = (vnode: VNode, container: RendererElement) => {
+  const mountElement = (vnode: VNode, container: RendererElement, anchor: RendererNode | null) => {
     const el = vnode.el = hostCreateElement(vnode.type as string)
     const { props, shapeFlag } = vnode
 
@@ -158,7 +164,7 @@ export function baseCreateRenderer(options: RendererOptions): any {
       mountChildren(
         vnode.children as VNodeArrayChildren,
         el,
-        null,
+        anchor,
       )
     }
 
@@ -168,7 +174,7 @@ export function baseCreateRenderer(options: RendererOptions): any {
         hostPatchProp(el, key, null, props[key])
     }
 
-    hostInsert(el, container)
+    hostInsert(el, container, anchor)
   }
 
   const mountChildren: MountChildrenFn = (children, container, anchor, start = 0) => {
@@ -225,23 +231,11 @@ export function baseCreateRenderer(options: RendererOptions): any {
     }
     else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
       if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-        const c1Len = c1?.length || 0
-        const c2Len = c2?.length || 0
-        const commonLen = Math.min(c1Len, c2Len)
-        for (let i = 0; i < commonLen; i++)
-          // @ts-expect-error vnode transformer
-          patch(c1[i], c2[i], container)
-
-        if (c2Len > c1Len) {
-          for (let i = commonLen; i < c2Len; i++)
-            // @ts-expect-error vnode transformer
-            patch(null, c2[i], container)
-        }
-        else if (c1Len > c2Len) {
-          for (let i = commonLen; i < c1Len; i++)
-            // @ts-expect-error vnode transformer
-            unmount(c1[i])
-        }
+        patchKeyedChildren(
+          c1 as VNode[],
+          c2 as VNodeArrayChildren,
+          container,
+        )
       }
       else {
         hostSetElementText(container, '')
@@ -260,13 +254,63 @@ export function baseCreateRenderer(options: RendererOptions): any {
     }
   }
 
+  const patchKeyedChildren = (
+    c1: VNode[],
+    c2: VNodeArrayChildren,
+    container: RendererElement,
+  ) => {
+    const l2 = c2.length
+    const e1 = c1.length - 1
+    const e2 = l2 - 1
+
+    let lastIndex = 0
+    for (let i = 0; i <= e2; i++) {
+      const n2 = c2[i] as VNode
+      let j = 0
+      let find = false
+
+      for (j; j <= e1; j++) {
+        const n1 = c1[j]
+
+        if (isSameVNodeType(n1, n2)) {
+          find = true
+          // patch same vnode content
+          patch(n1, n2, container, null)
+
+          if (j < lastIndex) {
+            // move
+            const prevVNode = c2[i - 1] as VNode
+            if (prevVNode) {
+              const anchor = hostNextSibling(prevVNode)
+              hostInsert(n2, container, anchor)
+            }
+          }
+          else {
+            lastIndex = j
+          }
+
+          break
+        }
+      }
+
+      // not find same vnode
+      if (!find) {
+        const prevVNode = c2[i - 1] as VNode
+        const anchor = prevVNode
+          ? hostNextSibling(prevVNode)
+          : container.firstChild
+        patch(null, n2, container, anchor)
+      }
+    }
+  }
+
   const unmount: UnmountFn = (vnode) => {
     hostRemove(vnode)
   }
 
   const render: RootRenderFunction = (vnode, container) => {
     if (vnode) {
-      patch(container?._vnode || null, vnode, container)
+      patch(container?._vnode || null, vnode, container, null)
     }
     else {
       if (container._vnode)

@@ -34,4 +34,7 @@ export const nodeOps: Omit<RendererOptions<Node, Element>, 'patchProp'> = {
   createComment(text) {
     return doc.createComment(text)
   },
+  parentNode: node => node.parentNode as Element | null,
+  nextSibling: node => node.nextSibling,
+  querySelector: selector => doc.querySelector(selector),
 }

@@ -49,7 +49,7 @@ export interface VNode<
 
   type: VNodeTypes
   props: (VNodeProps & ExtraProps) | null
-  // key: string | number | symbol | null
+  key: string | number | symbol | null
   children: VNodeNormalizedChildren
 
   // DOM
@@ -85,6 +85,8 @@ export type VNodeTypes =
   | typeof Fragment
 // | typeof TeleportImpl
 // | typeof SuspenseImpl
+
+const normalizeKey = ({ key }: VNodeProps): VNode['key'] => key != null ? key : null
 
 /**
  * @private
@@ -151,7 +153,7 @@ function createBaseVNode(
     __v_skip: true,
     type,
     props,
-    // key: props && normalizeKey(props),
+    key: props && normalizeKey(props),
     // ref: props && normalizeRef(props),
     // scopeId: currentScopeId,
     // slotScopeIds: null,

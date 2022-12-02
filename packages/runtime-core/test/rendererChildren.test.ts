@@ -25,6 +25,35 @@ describe('renderer: children', () => {
     root = nodeOps.createElement('div')
   })
 
+  it('append', () => {
+    elm = renderChildren([1])
+    expect(elm.children.length).toBe(1)
+    elm = renderChildren([1, 2, 3])
+    expect(elm.children.length).toBe(3)
+    expect((elm.children as TestElement[]).map(inner)).toEqual(
+      [
+        '1',
+        '2',
+        '3',
+      ],
+    )
+  })
+
+  it('prepend', () => {
+    elm = renderChildren([4, 5])
+    expect(elm.children.length).toBe(2)
+
+    elm = renderChildren([1, 2, 3, 4, 5])
+    expect(elm.children.length).toBe(5)
+    expect((elm.children as TestElement[]).map(inner)).toEqual([
+      '1',
+      '2',
+      '3',
+      '4',
+      '5',
+    ])
+  })
+
   it('patch previously empty children', () => {
     elm = renderChildren([1, 2, 3])
     expect(elm.children.length).toBe(3)

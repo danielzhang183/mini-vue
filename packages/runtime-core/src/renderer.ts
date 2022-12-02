@@ -225,9 +225,23 @@ export function baseCreateRenderer(options: RendererOptions): any {
     }
     else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
       if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
-        for (let i = 0; i < c2!.length; i++)
+        const c1Len = c1?.length || 0
+        const c2Len = c2?.length || 0
+        const commonLen = Math.min(c1Len, c2Len)
+        for (let i = 0; i < commonLen; i++)
           // @ts-expect-error vnode transformer
           patch(c1[i], c2[i], container)
+
+        if (c2Len > c1Len) {
+          for (let i = commonLen; i < c2Len; i++)
+            // @ts-expect-error vnode transformer
+            patch(null, c2[i], container)
+        }
+        else if (c1Len > c2Len) {
+          for (let i = commonLen; i < c1Len; i++)
+            // @ts-expect-error vnode transformer
+            unmount(c1[i])
+        }
       }
       else {
         hostSetElementText(container, '')

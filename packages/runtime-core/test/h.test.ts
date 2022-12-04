@@ -11,7 +11,7 @@ describe('h', () => {
     expect(h('div', { id: 'foo' })).toMatchObject(createVNode('div', { id: 'foo' }))
   })
 
-  it('type + props + chlidren', () => {
+  it('type + props + children', () => {
     // array
     expect(h('div', {}, ['foo'])).toMatchObject(createVNode('div', {}, ['foo']))
     // text

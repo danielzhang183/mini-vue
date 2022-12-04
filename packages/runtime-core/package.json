@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@mini-vue/runtime-dom": "workspace:*",
-    "@mini-vue/shared": "workspace:*",
-    "@mini-vue/runtime-test": "workspace:*"
+    "@mini-vue/runtime-test": "workspace:*",
+    "@mini-vue/shared": "workspace:*"
   }
 }

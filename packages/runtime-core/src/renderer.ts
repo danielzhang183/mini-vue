@@ -51,6 +51,7 @@ type PatchChildrenFn = (
   n1: VNode | null,
   n2: VNode,
   container: RendererElement,
+  anchor: RendererNode | null,
 ) => void
 
 type MountChildrenFn = (
@@ -150,7 +151,7 @@ export function baseCreateRenderer(options: RendererOptions): any {
     if (n1 == null)
       mountElement(n2, container, anchor)
     else
-      patchElement(n1, n2)
+      patchElement(n1, n2, anchor)
   }
 
   const mountElement = (vnode: VNode, container: RendererElement, anchor: RendererNode | null) => {
@@ -192,6 +193,7 @@ export function baseCreateRenderer(options: RendererOptions): any {
   const patchElement = (
     n1: VNode,
     n2: VNode,
+    anchor: RendererNode | null,
   ) => {
     const el = (n2.el = n1.el!)
     const oldProps = n1.props || EMPTY_OBJ
@@ -207,7 +209,7 @@ export function baseCreateRenderer(options: RendererOptions): any {
         hostPatchProp(el, key, oldProps[key], null)
     }
 
-    patchChildren(n1, n2, el)
+    patchChildren(n1, n2, el, anchor)
   }
 
   // cover 9 situations
@@ -215,6 +217,7 @@ export function baseCreateRenderer(options: RendererOptions): any {
     n1,
     n2,
     container,
+    anchor,
   ) => {
     const c1 = n1 && n1.children
     const prevShapeFlag = n1 ? n1.shapeFlag : 0
@@ -235,6 +238,7 @@ export function baseCreateRenderer(options: RendererOptions): any {
           c1 as VNode[],
           c2 as VNodeArrayChildren,
           container,
+          anchor,
         )
       }
       else {
@@ -258,6 +262,7 @@ export function baseCreateRenderer(options: RendererOptions): any {
     c1: VNode[],
     c2: VNodeArrayChildren,
     container: RendererElement,
+    anchor: RendererNode | null,
   ) => {
     const l2 = c2.length
     const e1 = c1.length - 1
@@ -265,6 +270,7 @@ export function baseCreateRenderer(options: RendererOptions): any {
 
     let lastIndex = 0
     for (let i = 0; i <= e2; i++) {
+      console.log({ lastIndex })
       const n2 = c2[i] as VNode
       let j = 0
       let find = false
@@ -282,7 +288,7 @@ export function baseCreateRenderer(options: RendererOptions): any {
             const prevVNode = c2[i - 1] as VNode
             if (prevVNode) {
               const anchor = hostNextSibling(prevVNode)
-              hostInsert(n2, container, anchor)
+              hostInsert(n2.el!, container, anchor)
             }
           }
           else {
@@ -301,6 +307,14 @@ export function baseCreateRenderer(options: RendererOptions): any {
           : container.firstChild
         patch(null, n2, container, anchor)
       }
+    }
+
+    // umount old tree useless vnode
+    for (let i = 0; i < e1; i++) {
+      const n1 = c1[i]
+      const has = c2.find(vnode => isSameVNodeType(vnode as VNode, n1))
+      if (!has)
+        unmount(n1)
     }
   }
 

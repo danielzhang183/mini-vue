@@ -1,4 +1,4 @@
-import { EMPTY_OBJ, ShapeFlags } from '@mini-vue/shared'
+import { EMPTY_ARR, EMPTY_OBJ, ShapeFlags } from '@mini-vue/shared'
 import type { VNode, VNodeArrayChildren } from './vnode'
 import { Comment, Text, isSameVNodeType, normalizeVNode } from './vnode'
 
@@ -65,6 +65,12 @@ export type RootRenderFunction<HostElement = RendererElement> = (
   vnode: VNode | null,
   container: HostElement,
 ) => void
+
+export const enum MoveType {
+  ENTER,
+  LEAVE,
+  REORDER,
+}
 
 export function createRenderer<
   HostNode = RendererNode,
@@ -262,59 +268,167 @@ export function baseCreateRenderer(options: RendererOptions): any {
     c1: VNode[],
     c2: VNodeArrayChildren,
     container: RendererElement,
-    anchor: RendererNode | null,
+    parentAnchor: RendererNode | null,
   ) => {
+    let i = 0
     const l2 = c2.length
-    const e1 = c1.length - 1
-    const e2 = l2 - 1
+    let e1 = c1.length - 1
+    let e2 = l2 - 1
 
-    let lastIndex = 0
-    for (let i = 0; i <= e2; i++) {
-      console.log({ lastIndex })
-      const n2 = c2[i] as VNode
-      let j = 0
-      let find = false
+    // 1. sync from start
+    // (a b) c
+    // (a b) d e
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[i]
+      const n2 = (c2[i] = normalizeVNode(c2[i]))
+      if (isSameVNodeType(n1, n2))
+        patch(n1, n2, container, null)
+      else
+        break
+      i++
+    }
 
-      for (j; j <= e1; j++) {
-        const n1 = c1[j]
+    // 2. sync from end
+    // a (b c)
+    // d e (b c)
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[e1]
+      const n2 = (c2[e2] = normalizeVNode(c2[e2]))
+      if (isSameVNodeType(n1, n2))
+        patch(n1, n2, container, null)
+      else
+        break
+      e1--
+      e2--
+    }
 
-        if (isSameVNodeType(n1, n2)) {
-          find = true
-          // patch same vnode content
-          patch(n1, n2, container, null)
-
-          if (j < lastIndex) {
-            // move
-            const prevVNode = c2[i - 1] as VNode
-            if (prevVNode) {
-              const anchor = hostNextSibling(prevVNode)
-              hostInsert(n2.el!, container, anchor)
-            }
-          }
-          else {
-            lastIndex = j
-          }
-
-          break
+    // 3. common sequence + mount
+    // (a b)
+    // (a b) c
+    // i = 2, e1 = 1, e2 = 2
+    // (a b)
+    // c (a b)
+    // i = 0, e1 = -1, e2 = 0
+    if (i > e1) {
+      if (i <= e2) {
+        const nextPos = e2 + 1
+        const anchor = nextPos < l2
+          ? (c2[nextPos] as VNode).el
+          : parentAnchor
+        while (i <= e2) {
+          patch(
+            null,
+            (c2[i] = normalizeVNode(c2[i])),
+            container,
+            anchor,
+          )
+          i++
         }
-      }
-
-      // not find same vnode
-      if (!find) {
-        const prevVNode = c2[i - 1] as VNode
-        const anchor = prevVNode
-          ? hostNextSibling(prevVNode)
-          : container.firstChild
-        patch(null, n2, container, anchor)
       }
     }
 
-    // umount old tree useless vnode
-    for (let i = 0; i < e1; i++) {
-      const n1 = c1[i]
-      const has = c2.find(vnode => isSameVNodeType(vnode as VNode, n1))
-      if (!has)
-        unmount(n1)
+    // 4. common sequence + unmount
+    // (a b) c
+    // (a b)
+    // i = 2, e1 = 2, e2 = 1
+    // a (b c)
+    // (b c)
+    // i = 0, e1 = 0, e2 = -1
+    else if (i > e2) {
+      while (i <= e1) {
+        unmount(c1[i])
+        i++
+      }
+    }
+
+    // 5. unknown sequence
+    // [i ... e1 + 1]: a b [c d e] f g
+    // [i ... e2 + 1]: a b [e d c h] f g
+    // i = 2, e1 = 4, e2 = 5
+    else {
+      const s1 = i
+      const s2 = i
+
+      // 5.1 build key:index map for newChildren
+      const keyToNewIndexMap: Map<string | number | symbol, number> = new Map()
+      for (i = s2; i <= e2; i++) {
+        const nextChild = (c2[i] = normalizeVNode(c2[i]))
+        if (nextChild.key != null) {
+          if (keyToNewIndexMap.has(nextChild.key)) {
+            console.warn(
+              'Duplicate keys found during update:',
+              JSON.stringify(nextChild.key),
+              'Make sure keys are unique.',
+            )
+          }
+          keyToNewIndexMap.set(nextChild.key, i)
+        }
+      }
+
+      // 5.2 loop through old children left to be patched and try to patch
+      // matching nodes & remove nodes that are no longer present
+      let j
+      let patched = 0
+      const toBePatched = e2 - s2 + 1
+      let moved = false
+      // used to track whether any node has moved
+      let maxNewIndexSoFar = 0
+      const newIndexToOldIndexMap = new Array(toBePatched)
+      for (i = 0; i < toBePatched; i++)
+        newIndexToOldIndexMap[i] = 0
+
+      for (i = s1; i <= e1; i++) {
+        const prevChild = c1[i]
+        if (patched >= toBePatched) {
+          // all new children have been patched so this can only be a removal
+          unmount(prevChild)
+          continue
+        }
+        let newIndex
+        if (prevChild.key != null) {
+          newIndex = keyToNewIndexMap.get(prevChild.key)
+        }
+        else {
+          // TODO: patch unkeyed node
+        }
+
+        if (newIndex === undefined) {
+          unmount(prevChild)
+        }
+        else {
+          newIndexToOldIndexMap[newIndex - s2] = i + 1
+
+          if (newIndex >= maxNewIndexSoFar)
+            maxNewIndexSoFar = newIndex
+          else
+            moved = true
+
+          patch(prevChild, c2[newIndex] as VNode, container, null)
+          patched++
+        }
+      }
+
+      // 5.3 move and mount
+      // generate longest stable subsequence only when nodes have moved
+      const increasingNewIndexSequence = moved
+        ? getSequence(newIndexToOldIndexMap)
+        : EMPTY_ARR
+      j = increasingNewIndexSequence.length - 1
+      // looping backwards so that we can use last patched node as anchor
+      for (i = toBePatched - 1; i >= 0; i--) {
+        const nextIndex = s2 + i
+        const nextChild = c2[nextIndex] as VNode
+        const anchor = nextIndex + 1 < l2 ? (c2[nextIndex + 1] as VNode) : parentAnchor
+        if (newIndexToOldIndexMap[i] === 0) {
+          patch(null, nextChild, container, anchor)
+        }
+        else if (moved) {
+          if (j < 0 || i !== increasingNewIndexSequence[j])
+            moved(nextChild, container, anchor, MoveType.REORDER)
+          else
+            j--
+        }
+      }
     }
   }
 
@@ -336,4 +450,8 @@ export function baseCreateRenderer(options: RendererOptions): any {
   return {
     render,
   }
+}
+
+function getSequence(arr: number[]) {
+  return 1
 }

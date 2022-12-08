@@ -1,3 +1,4 @@
+import { createDecipheriv } from 'crypto'
 import { EMPTY_ARR, EMPTY_OBJ, ShapeFlags } from '@mini-vue/shared'
 import type { VNode, VNodeArrayChildren } from './vnode'
 import { Comment, Text, isSameVNodeType, normalizeVNode } from './vnode'
@@ -297,7 +298,18 @@ export function baseCreateRenderer(options: RendererOptions): any {
     anchor,
   ) => {
     const componentOptions = initialVNode.type
-    const { render, data } = componentOptions
+    const {
+      render,
+      data,
+      beforeCreate,
+      create,
+      beforeMount,
+      mounted,
+      beforeUpdate,
+      updated,
+    } = componentOptions
+
+    beforeCreate && beforeCreate()
 
     const state = reactive(data())
     const instance = {
@@ -308,15 +320,21 @@ export function baseCreateRenderer(options: RendererOptions): any {
 
     initialVNode.component = instance
 
+    created && created.call(state)
+
     effect(() => {
       const subTree = render.call(state, state)
 
       if (!instance.isMounted) {
+        beforeMount && beforeMount.call(state)
         patch(null, subTree, container, anchor)
         instance.isMounted = true
+        mounted && mounted.call(state)
       }
       else {
+        beforeUpdate && beforeUpdate.call(state)
         patch(instance.subTree, subTree, container, anchor)
+        updated && updated.call(state)
       }
 
       instance.subTree = subTree

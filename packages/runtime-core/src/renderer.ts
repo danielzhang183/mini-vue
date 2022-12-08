@@ -61,6 +61,19 @@ type MountChildrenFn = (
   start?: number
 ) => void
 
+type MoveFn = (
+  vnode: VNode,
+  container: RendererElement,
+  anchor: RendererNode | null,
+  type: MoveType,
+) => void
+
+export type MountComponentFn = (
+  initialVNode: VNode,
+  container: RendererElement,
+  anchor: RendererNode | null,
+) => void
+
 export type RootRenderFunction<HostElement = RendererElement> = (
   vnode: VNode | null,
   container: HostElement,
@@ -116,6 +129,8 @@ export function baseCreateRenderer(options: RendererOptions): any {
       default:
         if (shapeFlag & ShapeFlags.ELEMENT)
           processElement(n1, n2, container, anchor)
+        else if (shapeFlag & ShapeFlags.COMPONENT)
+          processComponent(n1, n2, container, anchor)
     }
   }
 
@@ -262,6 +277,55 @@ export function baseCreateRenderer(options: RendererOptions): any {
       else if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN)
         hostSetElementText(container, '')
     }
+  }
+
+  const processComponent = (
+    n1: VNode | null,
+    n2: VNode,
+    container: RendererElement,
+    anchor: RendererNode | null,
+  ) => {
+    if (n1 == null)
+      mountComponent(n2, container, anchor)
+    else
+      updateComponent(n1, n2)
+  }
+
+  const mountComponent: MountComponentFn = (
+    initialVNode,
+    container,
+    anchor,
+  ) => {
+    const componentOptions = initialVNode.type
+    const { render, data } = componentOptions
+
+    const state = reactive(data())
+    const instance = {
+      state,
+      isMounted: false,
+      subTree: null,
+    }
+
+    initialVNode.component = instance
+
+    effect(() => {
+      const subTree = render.call(state, state)
+
+      if (!instance.isMounted) {
+        patch(null, subTree, container, anchor)
+        instance.isMounted = true
+      }
+      else {
+        patch(instance.subTree, subTree, container, anchor)
+      }
+
+      instance.subTree = subTree
+    })
+  }
+
+  const updateComponent = (n1: VNode, n2: VNode) => {
+    // TODO: update component logics
+    console.log(n1, n2)
   }
 
   const patchKeyedChildren = (
@@ -430,6 +494,15 @@ export function baseCreateRenderer(options: RendererOptions): any {
         }
       }
     }
+  }
+
+  const move: MoveFn = (
+    vnode,
+    container,
+    anchor,
+    MoveType,
+  ) => {
+
   }
 
   const unmount: UnmountFn = (vnode) => {

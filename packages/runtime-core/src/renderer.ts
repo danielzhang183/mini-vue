@@ -301,6 +301,7 @@ export function baseCreateRenderer(options: RendererOptions): any {
     const {
       render,
       data,
+      props: propsOptions,
       beforeCreate,
       create,
       beforeMount,
@@ -312,8 +313,11 @@ export function baseCreateRenderer(options: RendererOptions): any {
     beforeCreate && beforeCreate()
 
     const state = reactive(data())
+    const [props, attrs] = resolveProps(propsOptions, initialVNode.props)
+
     const instance = {
       state,
+      props: shallowReactive(props),
       isMounted: false,
       subTree: null,
     }
@@ -339,6 +343,19 @@ export function baseCreateRenderer(options: RendererOptions): any {
 
       instance.subTree = subTree
     })
+  }
+
+  function resolveProps(options, propsData) {
+    const props = {}
+    const attrs = {}
+    for (const key in propsData) {
+      if (key in options)
+        props[key] = propsData[key]
+      else
+        attrs[key] = propsData[key]
+    }
+
+    return [props, attrs]
   }
 
   const updateComponent = (n1: VNode, n2: VNode) => {

@@ -1,32 +1,107 @@
-import { isArray, notNull } from '@mini-vue/shared'
+import { extend, isArray, isIntegerKey } from '@mini-vue/shared'
+import type { Dep } from './dep'
+import { createDep } from './dep'
+import type { EffectScope } from './effectScope'
+import { recordEffectScope } from './effectScope'
 import { TriggerOpTypes } from './operations'
-import type { DepKey, Deps, DepsMap, Effect, EffectOptions } from './types'
 
-const targetMap: WeakMap<Object, DepsMap> = new WeakMap()
-let activeEffect: Effect | undefined
-const effectStack: Effect[] = []
+type KeyToDepMap = Map<any, Dep>
+const targetMap = new WeakMap<any, KeyToDepMap>()
+let activeEffect: ReactiveEffect | undefined
 export const ITERATE_KEY = Symbol('iterate')
 
-export function effect(fn: Function, options?: EffectOptions): Effect {
-  const effectFn: Effect = () => {
-    cleanupEffect(effectFn)
-    activeEffect = effectFn
-    effectStack.push(effectFn)
-    const res = fn()
-    effectStack.pop()
-    activeEffect = effectStack[effectStack.length - 1]
-    return res
+export type EffectScheduler = (...args: any[]) => any
+
+export class ReactiveEffect<T = any> {
+  active = true
+  deps: Dep[] = []
+  parent: ReactiveEffect | undefined = undefined
+
+  /**
+   * @internal
+   */
+  allowRecurse?: boolean
+  /**
+    * @internal
+    */
+  private deferStop?: boolean
+
+  constructor(
+    public fn: () => T,
+    public scheduler: EffectScheduler | null = null,
+    scope?: EffectScope,
+  ) {
+    recordEffectScope(this, scope)
   }
 
-  effectFn.options = options || {}
-  effectFn.deps = []
-  if (!options?.lazy)
-    effectFn()
+  run() {
+    if (!this.active)
+      return this.fn()
 
-  return effectFn
+    let parent: ReactiveEffect | undefined = activeEffect
+    const lastShouldTrack = shouldTrack
+    while (parent) {
+      if (parent === this)
+        return
+
+      parent = parent.parent
+    }
+    try {
+      this.parent = activeEffect
+      activeEffect = this
+      shouldTrack = true
+      cleanupEffect(this)
+      return this.fn()
+    }
+    finally {
+      activeEffect = this.parent
+      shouldTrack = lastShouldTrack
+      this.parent = undefined
+
+      if (this.deferStop)
+        this.stop()
+    }
+  }
+
+  stop() {
+
+  }
 }
 
-export function cleanupEffect(effect: Effect) {
+export interface ReactiveEffectOptions {
+  lazy?: boolean
+  scheduler?: EffectScheduler
+  scope?: EffectScope
+  allowRecurse?: boolean
+  onStop?: () => void
+}
+
+export interface ReactiveEffectRunner<T = any> {
+  (): T
+  effect: ReactiveEffect
+}
+
+export function effect<T = any>(
+  fn: () => T,
+  options?: ReactiveEffectOptions,
+): ReactiveEffectRunner {
+  const _effect = new ReactiveEffect(fn)
+  if (options) {
+    extend(_effect, options)
+    if (options.scope)
+      recordEffectScope(_effect, options.scope)
+  }
+
+  if (!options || !options.lazy)
+    _effect.run()
+
+  const runner = _effect.run.bind(effect) as ReactiveEffectRunner
+  runner.effect = _effect
+
+  return runner
+}
+
+export function cleanupEffect(effect: ReactiveEffect) {
   const { deps } = effect
   if (deps.length) {
     for (let i = 0; i < deps.length; i++)
@@ -53,57 +128,102 @@ export function resetTracking() {
   shouldTrack = last === undefined ? true : last
 }
 
-export function track(target: any, key: DepKey) {
+export function track(target: object, key: unknown) {
   if (!activeEffect || !shouldTrack)
     return
 
   let depsMap = targetMap.get(target)
   if (!depsMap)
     targetMap.set(target, (depsMap = new Map()))
-  let deps = depsMap.get(key)
-  if (!deps)
-    depsMap.set(key, (deps = new Set()))
+  let dep = depsMap.get(key)
+  if (!dep)
+    depsMap.set(key, (dep = createDep()))
 
-  deps.add(activeEffect)
-  activeEffect.deps.push(deps)
+  trackEffects(dep)
 }
 
-export function trigger(target: any, key: DepKey, type: TriggerOpTypes, newVal?: any) {
+export function trackEffects(dep: Dep) {
+  const shouldTrack = !dep.has(activeEffect!)
+
+  if (shouldTrack) {
+    dep.add(activeEffect!)
+    activeEffect?.deps.push(dep)
+  }
+}
+
+export function trigger(
+  target: any,
+  key: unknown,
+  type: TriggerOpTypes,
+  newValue?: unknown,
+) {
   const depsMap = targetMap.get(target)
   if (!depsMap)
     return
-  const effects = isArray(target) && key === 'length'
-    ? Object.entries(depsMap)
-      .map(([key, effects]: [string, Deps]): boolean | undefined | Deps => (key >= newVal) && effects)
-      .filter(notNull)
-      .flat() as any as Deps
-    : depsMap.get(key)
-  const effectsToRun: Deps = new Set()
-  effects?.forEach((effect) => {
-    if (effect !== activeEffect)
-      effectsToRun.add(effect)
-  })
 
-  if ([TriggerOpTypes.ADD, TriggerOpTypes.DELETE].includes(type)) {
-    const iterateEffects = depsMap.get(ITERATE_KEY)
-    iterateEffects?.forEach((effect) => {
-      if (effect !== activeEffect)
-        effectsToRun.add(effect)
+  let deps: (Dep | undefined)[] = []
+  if (type === TriggerOpTypes.CLEAR) {
+    deps = [...depsMap.values()]
+  }
+  else if (key === 'length' && isArray(target)) {
+    const newLength = Number(newValue)
+    depsMap.forEach((dep, key) => {
+      if (key === 'length' || key >= newLength)
+        deps.push(dep)
     })
   }
+  else {
+    if (key !== undefined)
+      deps.push(depsMap.get(key))
 
-  if (isArray(target) && type === TriggerOpTypes.ADD) {
-    const lengthEffects = depsMap.get('length')
-    lengthEffects?.forEach((effect) => {
-      if (effect !== activeEffect)
-        effectsToRun.add(effect)
-    })
+    switch (type) {
+      case TriggerOpTypes.ADD:
+        if (!isArray(target))
+          deps.push(depsMap.get(ITERATE_KEY))
+        else if (isIntegerKey(key))
+          deps.push(depsMap.get('length'))
+
+        break
+      case TriggerOpTypes.DELETE:
+        break
+      case TriggerOpTypes.SET:
+        break
+    }
   }
 
-  effectsToRun.forEach((effect) => {
-    if (effect.options.scheduler)
-      effect.options.scheduler(effect)
+  if (deps[0]) {
+    triggerEffects(deps[0])
+  }
+  else {
+    const effects: ReactiveEffect[] = []
+    for (const dep of deps) {
+      if (dep)
+        effects.push(...dep)
+    }
+    triggerEffects(createDep(effects))
+  }
+}
+
+export function triggerEffects(dep: Dep | ReactiveEffect[]) {
+  // spread into array for stabilization
+  const effects = isArray(dep) ? dep : [...dep]
+  for (const effect of effects) {
+    if (effect.computed)
+      triggerEffect(effect)
+  }
+  for (const effect of effects) {
+    if (!effect.computed)
+      triggerEffect(effect)
+  }
+}
+
+function triggerEffect(
+  effect: ReactiveEffect,
+) {
+  if (effect !== activeEffect || effect.allowRecurse) {
+    if (effect.scheduler)
+      effect.scheduler()
     else
-      effect()
-  })
+      effect.run()
+  }
 }

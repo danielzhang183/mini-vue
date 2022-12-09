@@ -33,6 +33,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@mini-vue/reactivity": "workspace:*",
     "@mini-vue/runtime-dom": "workspace:*",
     "@mini-vue/runtime-test": "workspace:*",
     "@mini-vue/shared": "workspace:*"

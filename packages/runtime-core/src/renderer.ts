@@ -2,6 +2,11 @@ import { createDecipheriv } from 'crypto'
 import { EMPTY_ARR, EMPTY_OBJ, ShapeFlags } from '@mini-vue/shared'
 import type { VNode, VNodeArrayChildren } from './vnode'
 import { Comment, Text, isSameVNodeType, normalizeVNode } from './vnode'
+import type { ComponentInternalInstance } from './component'
+import { createComponentInstance, setupComponent } from './component'
+import { hasPropsChanged, resolveProps } from './componentProps'
+import type { SchedulerJob } from './scheduler'
+import { queueJob } from './scheduler'
 
 export interface Renderer<HostElement = RendererElement> {
   render: RootRenderFunction<HostElement>
@@ -69,10 +74,18 @@ type MoveFn = (
   type: MoveType,
 ) => void
 
+export type SetupRenderEffectFn = (
+  instance: ComponentInternalInstance,
+  initialVNode: VNode,
+  container: RendererElement,
+  anchor: RendererNode | null,
+) => void
+
 export type MountComponentFn = (
   initialVNode: VNode,
   container: RendererElement,
   anchor: RendererNode | null,
+  parentComponent: ComponentInternalInstance | null,
 ) => void
 
 export type RootRenderFunction<HostElement = RendererElement> = (
@@ -285,9 +298,10 @@ export function baseCreateRenderer(options: RendererOptions): any {
     n2: VNode,
     container: RendererElement,
     anchor: RendererNode | null,
+    parentComponent: ComponentInternalInstance | null,
   ) => {
     if (n1 == null)
-      mountComponent(n2, container, anchor)
+      mountComponent(n2, container, anchor, parentComponent)
     else
       updateComponent(n1, n2)
   }
@@ -296,71 +310,95 @@ export function baseCreateRenderer(options: RendererOptions): any {
     initialVNode,
     container,
     anchor,
+    parentComponent,
   ) => {
-    const componentOptions = initialVNode.type
-    const {
-      render,
-      data,
-      props: propsOptions,
-      beforeCreate,
-      create,
-      beforeMount,
-      mounted,
-      beforeUpdate,
-      updated,
-    } = componentOptions
+    const compatMountInstance = initialVNode.component
+    const instance: ComponentInternalInstance = compatMountInstance || (initialVNode.component = createComponentInstance(
+      initialVNode,
+      parentComponent,
+    ))
 
-    beforeCreate && beforeCreate()
+    setupComponent(instance)
 
-    const state = reactive(data())
-    const [props, attrs] = resolveProps(propsOptions, initialVNode.props)
-
-    const instance = {
-      state,
-      props: shallowReactive(props),
-      isMounted: false,
-      subTree: null,
-    }
-
-    initialVNode.component = instance
-
-    created && created.call(state)
-
-    effect(() => {
-      const subTree = render.call(state, state)
-
-      if (!instance.isMounted) {
-        beforeMount && beforeMount.call(state)
-        patch(null, subTree, container, anchor)
-        instance.isMounted = true
-        mounted && mounted.call(state)
-      }
-      else {
-        beforeUpdate && beforeUpdate.call(state)
-        patch(instance.subTree, subTree, container, anchor)
-        updated && updated.call(state)
-      }
-
-      instance.subTree = subTree
-    })
+    setupRenderEffect(
+      instance,
+      initialVNode,
+      container,
+      anchor,
+    )
   }
 
-  function resolveProps(options, propsData) {
-    const props = {}
-    const attrs = {}
-    for (const key in propsData) {
-      if (key in options)
-        props[key] = propsData[key]
-      else
-        attrs[key] = propsData[key]
+  const setupRenderEffect: SetupRenderEffectFn = (
+    instance,
+    initialVNode,
+    container,
+    anchor,
+  ) => {
+    const componentUpdateFn = () => {
+      if (!instance.isMounted) {
+        const subTree = (instance.subTree = renderComponentRoot(instance))
+        patch(
+          null,
+          subTree,
+          container,
+          anchor,
+        )
+        initialVNode.el = subTree.el
+        instance.isMounted = true
+        initialVNode = container = anchor = null as any
+      }
+      else {
+        let { next } = instance
+        const { vnode } = instance
+        if (next) {
+          next.el = vnode.el
+          updateComponentPreRender(instance, next)
+        }
+        else {
+          next = vnode
+        }
+
+        const nextTree = renderComponentRoot(instance)
+        const prevTree = instance.subTree
+        instance.subTree = nextTree
+
+        patch(
+          prevTree,
+          nextTree,
+          prevTree.el!,
+          prevTree,
+        )
+
+        next.el = nextTree.el
+      }
     }
 
-    return [props, attrs]
+    const effect = (instance.effect = new ReactiveEffect(
+      componentUpdateFn,
+      () => queueJob(update),
+      instance.scope,
+    ))
+
+    const update: SchedulerJob = () => {}
+
+    update.ownerInstance = instance
+    update()
   }
 
   const updateComponent = (n1: VNode, n2: VNode) => {
-    // TODO: update component logics
-    console.log(n1, n2)
+    const instance = (n2.component = n1.component)
+    const { props } = instance
+    if (hasPropsChanged(n1.props, n2.props)) {
+      const [nextProps] = resolveProps(n2.type.props, n2.props)
+
+      for (const k in nextProps)
+        props[k] = nextProps[k]
+
+      for (const k in props) {
+        if (!(k in nextProps))
+          delete props[k]
+      }
+    }
   }
 
   const patchKeyedChildren = (

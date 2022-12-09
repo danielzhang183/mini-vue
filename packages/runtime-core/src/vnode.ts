@@ -1,8 +1,6 @@
 import { ShapeFlags, isArray, isBoolean, isFunction, isObject, isString } from '@mini-vue/shared'
 import type { RendererElement, RendererNode } from './renderer'
 
-export type Data = Record<string, unknown>
-
 export interface VNodeProps {
   key?: string | number | symbol
   // ref?: VNodeRef
@@ -51,6 +49,7 @@ export interface VNode<
   props: (VNodeProps & ExtraProps) | null
   key: string | number | symbol | null
   children: VNodeNormalizedChildren
+  component: ComponentInternalInstance | null
 
   // DOM
   el: HostNode | null
@@ -61,6 +60,14 @@ export interface VNode<
   // optimization only
   shapeFlag: number
   patchFlag: number
+
+  // application root node only
+  appContext: AppContext | null
+
+  /**
+   * @internal lexical scope owner instance
+   */
+  ctx: ComponentInternalInstance | null
 }
 
 export const isVNode = (val: any): val is VNode => val?.__v_isVNode === true

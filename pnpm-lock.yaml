@@ -42,10 +42,12 @@ importers:
 
   packages/runtime-core:
     specifiers:
+      '@mini-vue/reactivity': workspace:*
       '@mini-vue/runtime-dom': workspace:*
       '@mini-vue/runtime-test': workspace:*
       '@mini-vue/shared': workspace:*
     dependencies:
+      '@mini-vue/reactivity': link:../reactivity
       '@mini-vue/runtime-dom': link:../runtime-dom
       '@mini-vue/runtime-test': link:../runtime-test
       '@mini-vue/shared': link:../shared

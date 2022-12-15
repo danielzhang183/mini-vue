@@ -1,4 +1,3 @@
-import { createDecipheriv } from 'crypto'
 import { EMPTY_ARR, EMPTY_OBJ, ShapeFlags } from '@mini-vue/shared'
 import type { VNode, VNodeArrayChildren } from './vnode'
 import { Comment, Text, isSameVNodeType, normalizeVNode } from './vnode'
@@ -40,6 +39,7 @@ type PatchFn = (
   n2: VNode,
   container: RendererElement,
   anchor: RendererNode | null,
+  parentComponent?: ComponentInternalInstance | null,
 ) => void
 
 type UnmountFn = (
@@ -126,7 +126,7 @@ export function baseCreateRenderer(options: RendererOptions): any {
     nextSibling: hostNextSibling,
   } = options
 
-  const patch: PatchFn = (n1, n2, container, anchor) => {
+  const patch: PatchFn = (n1, n2, container, anchor, parentComponent) => {
     if (n1 && n1.type !== n2.type) {
       unmount(n1)
       n1 = null
@@ -144,7 +144,7 @@ export function baseCreateRenderer(options: RendererOptions): any {
         if (shapeFlag & ShapeFlags.ELEMENT)
           processElement(n1, n2, container, anchor)
         else if (shapeFlag & ShapeFlags.COMPONENT)
-          processComponent(n1, n2, container, anchor)
+          processComponent(n1, n2, container, anchor, parentComponent!)
     }
   }
 
@@ -313,10 +313,11 @@ export function baseCreateRenderer(options: RendererOptions): any {
     parentComponent,
   ) => {
     const compatMountInstance = initialVNode.component
-    const instance: ComponentInternalInstance = compatMountInstance || (initialVNode.component = createComponentInstance(
-      initialVNode,
-      parentComponent,
-    ))
+    const instance: ComponentInternalInstance = compatMountInstance
+      || (initialVNode.component = createComponentInstance(
+        initialVNode,
+        parentComponent,
+      ))
 
     setupComponent(instance)
 

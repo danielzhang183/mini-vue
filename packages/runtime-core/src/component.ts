@@ -1,6 +1,6 @@
 import { isPromise } from 'util/types'
-import { EMPTY_OBJ, ShapeFlags } from '@mini-vue/shared'
-import { TrackOpTypes, track } from '@mini-vue/reactivity'
+import { EMPTY_OBJ, NOOP, ShapeFlags, isFunction, isObject } from '@mini-vue/shared'
+import { TrackOpTypes, pauseTracking, resetTracking, shallowReadonly, track } from '@mini-vue/reactivity'
 import type { AppContext } from './apiCreateApp'
 import type { EmitFn, EmitsOptions } from './componentEmits'
 import { normalizeEmitsOptions } from './componentEmits'
@@ -9,7 +9,8 @@ import type { ComponentPropsOptions } from './componentProps'
 import { initProps, normalizePropsOptions } from './componentProps'
 import type { Slots } from './componentSlots'
 import { ErrorCodes, callWithErrorHandling } from './errorHandling'
-import type { VNode } from './vnode'
+import type { VNode, VNodeChild } from './vnode'
+import { isVNode } from './vnode'
 
 // use `E extends any` to force evaluating type to fix #2362
 export type SetupContext<E = EmitsOptions> = E extends any
@@ -20,6 +21,26 @@ export type SetupContext<E = EmitsOptions> = E extends any
       // expose: (exposed?: Record<string, any>) => void
     }
   : never
+
+/**
+ * @internal
+ */
+export interface InternalRenderFunction {
+  (
+    ctx: ComponentPublicInstance,
+    cache: ComponentInternalInstance['renderCache'],
+    // for compiler-optimized bindings
+    $props: ComponentInternalInstance['props'],
+    $setup: ComponentInternalInstance['setupState'],
+    $data: ComponentInternalInstance['data'],
+    $options: ComponentInternalInstance['ctx']
+  ): VNodeChild
+  _rc?: boolean // isRuntimeCompiled
+
+  // __COMPAT__ only
+  _compatChecked?: boolean // v3 and already checked for v2 compat
+  _compatWrapped?: boolean // is wrapped for v2 compat
+}
 
 export interface ComponentInternalOptions {
   /**
@@ -313,6 +334,21 @@ export function setupComponent(
   return setupResult
 }
 
+let currentInstance: ComponentInternalInstance | null = null
+
+export const getCurrentInstance: () => ComponentInternalInstance | null = () =>
+  currentInstance
+
+const setCurrentInstance = (instance: ComponentInternalInstance) => {
+  currentInstance = instance
+  currentInstance.scope.on()
+}
+
+const unsetCurrentInstance = () => {
+  currentInstance && currentInstance.scope.off()
+  currentInstance = null
+}
+
 function setupStatefulComponent(
   instance: ComponentInternalInstance,
 ) {
@@ -341,6 +377,43 @@ function setupStatefulComponent(
   else {
     finishComponentSetup(instance)
   }
+}
+
+export function handleSetupResult(
+  instance: ComponentInternalInstance,
+  setupResult: unknown,
+) {
+  if (isFunction(setupResult)) {
+    instance.render = setupResult as InternalRenderFunction
+  }
+  else if (isObject(setupResult)) {
+    if (isVNode(setupResult)) {
+      console.warn(
+        'setup() should not return VNodes directly - '
+          + 'return a render function instead.',
+      )
+    }
+    instance.setupState = proxyRefs(setupResult)
+  }
+  else if (setupResult !== undefined) {
+    console.warn(
+      `setup() should return an object. Received: ${
+        setupResult === null ? 'null' : typeof setupResult
+      }`,
+    )
+  }
+
+  finishComponentSetup(instance)
+}
+
+export function finishComponentSetup(
+  instance: ComponentInternalInstance,
+) {
+  const Component = instance.type as ComponentOptions
+  instance.render = (Component.render || NOOP) as InternalRenderFunction
+
+  if (!Component.render && instance.render === NOOP)
+    console.warn('Component is missing template or render function.')
 }
 
 export function createSetupContext(

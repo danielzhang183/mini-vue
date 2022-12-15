@@ -7,3 +7,5 @@ export const EMPTY_OBJ: { readonly [key: string]: any } = Object.freeze({})
 //   : {}
 export const EMPTY_ARR = Object.freeze([])
 // __DEV__ ? Object.freeze([]) : []
+
+export const NOOP = () => {}

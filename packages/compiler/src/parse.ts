@@ -1,5 +1,5 @@
 import { parseAttributes } from './parseAttributes'
-import type { ParseContext } from './types'
+import type { ParseContext, Text } from './types'
 import { TEXTMODES } from './types'
 
 export function parse(str: string) {
@@ -116,4 +116,26 @@ function parseElement(context: ParseContext, ancestors: Element[]) {
     console.error(`${element.tag} lack of end tag`)
 
   return element
+}
+
+function parseText(context: ParseContext): Text {
+  const { source } = context
+  let endIndex = source.length
+
+  const ltIndex = source.indexOf('<')
+  const delimiterIndex = source.indexOf('{{')
+
+  if (ltIndex > -1 && ltIndex < endIndex)
+    endIndex = ltIndex
+
+  if (delimiterIndex > -1 && delimiterIndex < endIndex)
+    endIndex = delimiterIndex
+
+  const content = source.slice(0, endIndex)
+  context.advanceBy(content.length)
+
+  return {
+    type: 'Text',
+    content,
+  }
 }

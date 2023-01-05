@@ -25,3 +25,8 @@ export interface Attribute {
   name: string
   value: unknown
 }
+
+export interface Text {
+  type: 'Text'
+  content: string
+}

@@ -1,24 +1,6 @@
-enum TEXTMODES {
-  DATA = 'DATA',
-  RCDATA = 'RCDATA',
-  RAWTEXT = 'RAWTEXT',
-  CDATA = 'CDATA',
-}
-
-interface ParseContext {
-  source: string
-  mode: TEXTMODES
-  advanceBy: (num: number) => void
-  advanceSpaces: () => void
-}
-
-interface Element {
-  type: 'Element'
-  tag: string
-  props?: any[]
-  children?: Element[]
-  isSelfClosing: boolean
-}
+import { parseAttributes } from './parseAttributes'
+import type { ParseContext } from './types'
+import { TEXTMODES } from './types'
 
 export function parse(str: string) {
   const context: ParseContext = {
@@ -88,13 +70,15 @@ function parseTag(context: ParseContext, type = 'start') {
   advanceBy(match![0].length)
   advanceSpaces()
 
+  const props = parseAttributes(context)
+
   const isSelfClosing = source.startsWith('/>')
   advanceBy(isSelfClosing ? 2 : 1)
 
   return {
     type: 'Element',
     tag,
-    props: [],
+    props,
     children: [],
     isSelfClosing,
   }
